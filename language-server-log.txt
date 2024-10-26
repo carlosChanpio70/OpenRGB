@@ -493,3 +493,14 @@
 22:58:11 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":16}
 23:02:38 stream.go:85: Received: {"jsonrpc":"2.0","id":17,"method":"workspace/executeCommand","params":{"command":"activeDocument","arguments":["file:///c%3A/Github/OpenRGB/RGBtest.pyw"]}}
 23:02:38 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":17}
+23:03:32 stream.go:85: Received: {"jsonrpc":"2.0","id":18,"method":"workspace/executeCommand","params":{"command":"activeDocument","arguments":["file:///c%3A/Github/OpenRGB/language-server-log.txt"]}}
+23:03:32 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":18}
+23:04:41 stream.go:85: Received: {"jsonrpc":"2.0","id":19,"method":"workspace/executeCommand","params":{"command":"activeDocument","arguments":["file:///c%3A/Github/OpenRGB/RGBtest.pyw"]}}
+23:04:41 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":19}
+23:04:43 stream.go:85: Received: {"jsonrpc":"2.0","id":20,"method":"workspace/executeCommand","params":{"command":"activeDocument","arguments":["file:///c%3A/Github/OpenRGB/language-server-log.txt"]}}
+23:04:43 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":20}
+23:04:52 stream.go:85: Received: {"jsonrpc":"2.0","method":"$/setTraceNotification","params":{"value":"off"}}
+23:05:00 stream.go:85: Received: {"jsonrpc":"2.0","id":21,"method":"workspace/executeCommand","params":{"command":"activeDocument","arguments":["file:///c%3A/Github/OpenRGB/.gitignore"]}}
+23:05:00 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":21}
+23:05:05 stream.go:85: Received: {"jsonrpc":"2.0","id":22,"method":"shutdown","params":null}
+23:05:10 langserv.go:25: EOF
