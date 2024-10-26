@@ -9,8 +9,8 @@ import numpy as np
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
 
-gradient_min_steps = 5
-gradient_max_steps = 10
+gradient_min_steps = 4
+gradient_max_steps = 6
 changes_per_second = 2
 layers = [
     "layer_1_base",  # * ID 0
