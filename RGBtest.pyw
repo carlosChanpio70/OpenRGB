@@ -294,7 +294,7 @@ def main():
                     set_layer_2(i)
 
             for i in devices:
-                if volume1 != volume:
+                if volume1 != volume and delay < desired_delay:
                     set_layer_2(i)
                 apply_layers(i)
 
