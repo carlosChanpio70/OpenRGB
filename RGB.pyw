@@ -11,7 +11,7 @@ from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
 
 gradient_min_steps = 4
 gradient_max_steps = 6
-changes_per_second = 2
+changes_per_second = 5
 layers = [
     "layer_1_base",  # * ID 0
     "layer_1_target",  # * ID 1
