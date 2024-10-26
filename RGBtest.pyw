@@ -58,7 +58,7 @@ def log_cpu_usage_thread():
 # Starts the OpenRGB Client and returns the client and devices
 
 
-def startup() -> tuple[OpenRGBClient, list]:
+def startup() -> OpenRGBClient:
     """
     Starts the OpenRGB Client
     :return: The client and devices
