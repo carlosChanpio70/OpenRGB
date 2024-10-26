@@ -1,5 +1,4 @@
 import random
-from webbrowser import get
 import psutil
 import comtypes
 import threading
@@ -106,7 +105,6 @@ def update_volume() -> None:
         set_volume()
         time.sleep(1/240)
 
-
 def set_layer_1(input) -> None:
     """
     Defines the colors for layer 1
@@ -120,11 +118,9 @@ def set_layer_1(input) -> None:
 
         :param zone: The zone
         """
-
-        if zone.name == "JRAINBOW1" or zone.name == "JRAINBOW2":
-            white = RGBColor(255, 200, 255)
-        else:
-            white = RGBColor(255, 255, 255)
+        
+        white = RGBColor(255, 255, 255)
+            
         if input.name == "Corsair Vengeance Pro RGB":
             purple = RGBColor(50, 0, 255)
         else:
@@ -221,7 +217,6 @@ def set_layer_1(input) -> None:
 
     set_layer_1_gradient()
 
-
 def set_layer_2(input) -> None:
     """
     Defines the colors for layer 2 based on the value of volume
@@ -251,7 +246,6 @@ def set_layer_2(input) -> None:
 
         devices_layers[input.id][layers[3]] = colors
 
-
 def apply_layers(input) -> None:
     """
     Mixes the colors of each layer and applies them
@@ -279,14 +273,16 @@ def main():
 
     start = time.time()
     delay = 0
-    desired_delay = 1/(changes_per_second*gradient_max_steps)
+    desired_delay = 1/(changes_per_second*((gradient_min_steps+gradient_max_steps)/2))
 
-    global volume
+    global volume, volume1
     volume = 0
+    volume1 = 0
 
     update_volume()
 
     # log_cpu_usage_thread()
+
 
     try:
         while True:
@@ -295,11 +291,14 @@ def main():
 
                 for i in devices:
                     set_layer_1(i)
+                    set_layer_2(i)
 
             for i in devices:
-                set_layer_2(i)
+                if volume1 != volume:
+                    set_layer_2(i)
                 apply_layers(i)
 
+            volume1 = volume
             time.sleep(1/480)
             delay = time.time() - start
 
