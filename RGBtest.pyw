@@ -1,4 +1,5 @@
 import random
+from webbrowser import get
 import psutil
 import comtypes
 import threading
@@ -9,14 +10,17 @@ import numpy as np
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
 
-gradient_steps = 10
-changes_per_second = 5
+gradient_min_steps = 5
+gradient_max_steps = 10
+changes_per_second = 2
 layers = [
-    "layer_1_base",
-    "layer_1_target",
-    "layer_1",
-    "layer_2",
-    "layer_1_timing"]
+    "layer_1_base",  # * ID 0
+    "layer_1_target",  # * ID 1
+    "layer_1",  # * ID 2
+    "layer_2",  # * ID 3
+    "layer_1_timing",  # * ID 4
+    "layer_1_counter"  # * ID 5
+]
 devices_layers: dict = {}
 
 
@@ -66,6 +70,7 @@ def startup() -> tuple[OpenRGBClient, list]:
     ramright = client.get_devices_by_name("Corsair Vengeance Pro RGB")[1]
     motherboard = client.get_devices_by_name(
         "MSI MPG B550 GAMING PLUS (MS-7C56)")[0]
+    global devices
     devices = [ramleft, ramright, motherboard]
     for i in devices:
         i.set_mode(i.modes[0])
@@ -74,7 +79,7 @@ def startup() -> tuple[OpenRGBClient, list]:
             devices_layers[i.id][j] = []
             for led in i.leds:
                 devices_layers[i.id][j].append(None)
-    return client, devices
+    return client
 
 
 @thread_wrapper
@@ -102,12 +107,36 @@ def update_volume() -> None:
         time.sleep(1/240)
 
 
-def set_layer_1(input, percentage_counter: int) -> None:
+def set_layer_1(input) -> None:
     """
     Defines the colors for layer 1
     :param input: The device to set the colors for
     :param percentage_counter: The current percentage of the animation for switching colors
     """
+
+    def get_color(zone) -> RGBColor:
+        """
+        Creates a list of random colors based on the zone size
+
+        :param zone: The zone
+        """
+
+        if zone.name == "JRAINBOW1" or zone.name == "JRAINBOW2":
+            white = RGBColor(255, 200, 255)
+        else:
+            white = RGBColor(255, 255, 255)
+        if input.name == "Corsair Vengeance Pro RGB":
+            purple = RGBColor(50, 0, 255)
+        else:
+            purple = RGBColor(100, 0, 255)
+
+        if zone.name == "JRGB1":
+            return purple
+        else:
+            if random.random() < 0.2:
+                return white
+            else:
+                return purple
 
     def set_color(layer: str) -> None:
         """
@@ -115,51 +144,26 @@ def set_layer_1(input, percentage_counter: int) -> None:
         :param layer: The layer to set the colors for
         """
 
-        def get_color(size: int, zone) -> list[RGBColor]:
-            """
-            Creates a list of random colors based on the zone size
-
-            :param size: The size of the zone
-            :param zone: The zone
-            """
-            colors = []
-
-            if zone.name == "JRAINBOW1" or zone.name == "JRAINBOW2":
-                white = RGBColor(255, 200, 255)
-            else:
-                white = RGBColor(255, 255, 255)
-            if input.name == "Corsair Vengeance Pro RGB":
-                purple = RGBColor(50, 0, 255)
-            else:
-                purple = RGBColor(100, 0, 255)
-
-            if size == 1:
-                colors.append(purple)
-            else:
-                for _ in range(size):
-                    if random.random() < 0.2:
-                        colors.append(white)
-                    else:
-                        colors.append(purple)
-
-            return colors
-
         colors = []
         for i in input.zones:
-            colors.extend(get_color(len(i.leds), i))
+            for _ in i.leds:
+                colors.append(get_color(i))
         devices_layers[input.id][layer] = colors
 
-    def random_timing(size: int) -> list[int]:
+    def gradient_random_timing(size: int):
         """
         Creates a list of random integers based on the zone size
 
         :param size: The size of the zone
         :param zone: The zone
         """
-        
+
+        if size == 1:
+            return random.randint(gradient_min_steps, gradient_max_steps)
         timings = []
         for _ in range(size):
-            timings.append(random.randint(0, 100))
+            timings.append(random.randint(
+                gradient_min_steps, gradient_max_steps))
         return timings
 
     def set_layer_1_gradient() -> None:
@@ -167,7 +171,10 @@ def set_layer_1(input, percentage_counter: int) -> None:
         Defines the colors for layer 1 based on the value of volume
         """
 
-        percent = percentage_counter/devices_layers[input.id][layers[4]][0]
+        gradient_timing = np.array(devices_layers[input.id][layers[4]])
+        gradient_counter = np.array(devices_layers[input.id][layers[5]])
+        percent = gradient_counter / gradient_timing
+
         # Extract red, green, blue values from old_colors and new_colors
         base_colors_rgb = np.array([(color.red, color.green, color.blue)
                                    for color in devices_layers[input.id][layers[0]]])
@@ -192,15 +199,25 @@ def set_layer_1(input, percentage_counter: int) -> None:
     if devices_layers[input.id][layers[0]][0] == None:
         set_color(layers[0])
         set_color(layers[1])
-    elif percentage_counter == 0:
-        devices_layers[input.id][layers[0]] = devices_layers[input.id][layers[1]]
-        set_color(layers[1])
 
     if devices_layers[input.id][layers[4]][0] == None:
-        devices_layers[input.id][layers[4]] = random_timing(len(input.leds))
+        devices_layers[input.id][layers[4]
+                                 ] = gradient_random_timing(len(input.leds))
+        devices_layers[input.id][layers[5]] = [0] * len(input.leds)
+
     for i in range(len(input.leds)):
-        if devices_layers[input.id][layers[4]][i] == 0:
-            devices_layers[input.id][layers[4]][i] = random_timing(1)
+        devices_layers[input.id][layers[5]][i] += 1
+        if devices_layers[input.id][layers[4]][i] <= devices_layers[input.id][layers[5]][i]:
+            devices_layers[input.id][layers[4]][i] = gradient_random_timing(1)
+            devices_layers[input.id][layers[5]][i] = 0
+            # Switch base and target colors and get new target colors
+            devices_layers[input.id][layers[0]][i] = devices_layers[input.id][layers[1]][i]
+            for j in devices:
+                for k in j.zones:
+                    for l in k.leds:
+                        if l.id == input.leds[i].id:
+                            zone = k
+            devices_layers[input.id][layers[1]][i] = get_color(zone)
 
     set_layer_1_gradient()
 
@@ -255,15 +272,14 @@ def apply_layers(input) -> None:
 def main():
     try:
 
-        client, devices = startup()
+        client = startup()
     except:
         time.sleep(5)
         main()
-    percentage_counter = 0
 
     start = time.time()
     delay = 0
-    desired_delay = 1/(changes_per_second*gradient_steps)
+    desired_delay = 1/(changes_per_second*gradient_max_steps)
 
     global volume
     volume = 0
@@ -277,12 +293,8 @@ def main():
             if delay > desired_delay:
                 start = time.time()
 
-                percentage_counter += 1
-                if percentage_counter > gradient_steps:
-                    percentage_counter = 0
-
                 for i in devices:
-                    set_layer_1(i, percentage_counter)
+                    set_layer_1(i)
 
             for i in devices:
                 set_layer_2(i)
