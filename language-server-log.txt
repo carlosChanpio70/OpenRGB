@@ -491,3 +491,5 @@
 22:57:43 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":15}
 22:58:11 stream.go:85: Received: {"jsonrpc":"2.0","id":16,"method":"workspace/executeCommand","params":{"command":"activeDocument","arguments":["file:///c%3A/Github/OpenRGB/RGBtest.pyw"]}}
 22:58:11 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":16}
+23:02:38 stream.go:85: Received: {"jsonrpc":"2.0","id":17,"method":"workspace/executeCommand","params":{"command":"activeDocument","arguments":["file:///c%3A/Github/OpenRGB/RGBtest.pyw"]}}
+23:02:38 stream.go:37: Sent: {"jsonrpc":"2.0","result":null,"id":17}
