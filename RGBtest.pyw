@@ -15,7 +15,8 @@ layers = [
     "layer_1_base",
     "layer_1_target",
     "layer_1",
-    "layer_2"]
+    "layer_2",
+    "layer_1_timing"]
 devices_layers: dict = {}
 
 
@@ -127,7 +128,6 @@ def set_layer_1(input, percentage_counter: int) -> None:
                 white = RGBColor(255, 200, 255)
             else:
                 white = RGBColor(255, 255, 255)
-
             if input.name == "Corsair Vengeance Pro RGB":
                 purple = RGBColor(50, 0, 255)
             else:
@@ -136,13 +136,11 @@ def set_layer_1(input, percentage_counter: int) -> None:
             if size == 1:
                 colors.append(purple)
             else:
-                for i in range(size):
-                    if i < size*0.2:
+                for _ in range(size):
+                    if random.random() < 0.2:
                         colors.append(white)
                     else:
                         colors.append(purple)
-
-            random.shuffle(colors)
 
             return colors
 
@@ -151,12 +149,25 @@ def set_layer_1(input, percentage_counter: int) -> None:
             colors.extend(get_color(len(i.leds), i))
         devices_layers[input.id][layer] = colors
 
+    def random_timing(size: int) -> list[int]:
+        """
+        Creates a list of random integers based on the zone size
+
+        :param size: The size of the zone
+        :param zone: The zone
+        """
+        
+        timings = []
+        for _ in range(size):
+            timings.append(random.randint(0, 100))
+        return timings
+
     def set_layer_1_gradient() -> None:
         """
         Defines the colors for layer 1 based on the value of volume
         """
 
-        percent = percentage_counter/gradient_steps
+        percent = percentage_counter/devices_layers[input.id][layers[4]][0]
         # Extract red, green, blue values from old_colors and new_colors
         base_colors_rgb = np.array([(color.red, color.green, color.blue)
                                    for color in devices_layers[input.id][layers[0]]])
@@ -184,6 +195,12 @@ def set_layer_1(input, percentage_counter: int) -> None:
     elif percentage_counter == 0:
         devices_layers[input.id][layers[0]] = devices_layers[input.id][layers[1]]
         set_color(layers[1])
+
+    if devices_layers[input.id][layers[4]][0] == None:
+        devices_layers[input.id][layers[4]] = random_timing(len(input.leds))
+    for i in range(len(input.leds)):
+        if devices_layers[input.id][layers[4]][i] == 0:
+            devices_layers[input.id][layers[4]][i] = random_timing(1)
 
     set_layer_1_gradient()
 
