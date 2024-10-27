@@ -67,8 +67,7 @@ def startup() -> OpenRGBClient:
 
     ramleft = client.get_devices_by_name("Corsair Vengeance Pro RGB")[0]
     ramright = client.get_devices_by_name("Corsair Vengeance Pro RGB")[1]
-    motherboard = client.get_devices_by_name(
-        "MSI MPG B550 GAMING PLUS (MS-7C56)")[0]
+    motherboard = client.get_devices_by_name("MSI MPG B550 GAMING PLUS (MS-7C56)")[0]
     global devices
     devices = [ramleft, ramright, motherboard]
     for i in devices:
