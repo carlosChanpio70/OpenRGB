@@ -272,7 +272,7 @@ def main():
 
     start = time.time()
     delay = 0
-    desired_delay = 1/(changes_per_second*((gradient_min_steps+gradient_max_steps)/2))
+    desired_delay = 1/(changes_per_second*gradient_max_steps)
 
     global volume, volume1
     volume = 0
