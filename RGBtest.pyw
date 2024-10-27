@@ -302,7 +302,7 @@ def main():
             time.sleep(1/480)
             delay = time.time() - start
 
-    except ConnectionAbortedError:
+    except:
         client.disconnect()
         main()
 
