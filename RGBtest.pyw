@@ -21,7 +21,7 @@ layers = [
     "layer_1_counter"  # * ID 5
 ]
 devices_layers: dict = {}
-
+names = ["Corsair Vengeance Pro RGB", "MSI MPG B550 GAMING PLUS (MS-7C56)", "JRGB1"]
 
 def timer(func):
 
@@ -64,12 +64,14 @@ def startup() -> OpenRGBClient:
     """
 
     client = OpenRGBClient(name="RGB")
-
-    ramleft = client.get_devices_by_name("Corsair Vengeance Pro RGB")[0]
-    ramright = client.get_devices_by_name("Corsair Vengeance Pro RGB")[1]
-    motherboard = client.get_devices_by_name("MSI MPG B550 GAMING PLUS (MS-7C56)")[0]
+    client.clear()
+    
     global devices
-    devices = [ramleft, ramright, motherboard]
+    devices=[]
+    devices.append(client.get_devices_by_name(names[0])[0])
+    devices.append(client.get_devices_by_name(names[0])[1])
+    devices.append(client.get_devices_by_name(names[1])[0])
+    
     for i in devices:
         i.set_mode(i.modes[0])
         devices_layers[i.id] = {}
@@ -120,12 +122,12 @@ def set_layer_1(input) -> None:
         
         white = RGBColor(255, 255, 255)
             
-        if input.name == "Corsair Vengeance Pro RGB":
+        if input.name == names[0]:
             purple = RGBColor(50, 0, 255)
         else:
             purple = RGBColor(100, 0, 255)
 
-        if zone.name == "JRGB1":
+        if zone.name == names[2]:
             return purple
         else:
             if random.random() < 0.2:
@@ -227,7 +229,7 @@ def set_layer_2(input) -> None:
         color2 = [255, 255, 255]
         return RGBColor(int(color1[0] * (1 - percent) + color2[0] * percent), int(color1[1] * (1 - percent) + color2[1] * percent), int(color1[2] * (1 - percent) + color2[2] * percent))
 
-    if input.name == "Corsair Vengeance Pro RGB":
+    if input.name == names[0]:
         colors = []
         for i in range(len(input.leds)):
             colors.append(None)
@@ -254,7 +256,7 @@ def apply_layers(input) -> None:
     if devices_layers[input.id][layers[2]][0] is not None:
         colors = devices_layers[input.id][layers[2]]
 
-        if input.name == "Corsair Vengeance Pro RGB":
+        if input.name == names[0]:
             for i in range(len(input.colors)):
                 if devices_layers[input.id][layers[3]][i] is not None:
                     colors[i] = devices_layers[input.id][layers[3]][i]
