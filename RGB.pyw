@@ -65,7 +65,7 @@ def startup() -> OpenRGBClient:
 
     client = OpenRGBClient(name="RGB")
     client.clear()
-    
+        
     global devices
     devices=[]
     devices.append(client.get_devices_by_name(names[0])[0])
