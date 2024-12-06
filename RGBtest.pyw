@@ -9,9 +9,9 @@ import numpy as np
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
 
-gradient_min_steps = 4
-gradient_max_steps = 6
-changes_per_second = 5
+gradient_min_steps = 2
+gradient_max_steps = 4
+updates_per_second = 10
 layers = [
     "layer_1_base",  # * ID 0
     "layer_1_target",  # * ID 1
@@ -274,7 +274,7 @@ def main():
 
     start = time.time()
     delay = 0
-    desired_delay = 1/(changes_per_second*gradient_max_steps)
+    desired_delay = 1/(updates_per_second)
 
     global volume, volume1
     volume = 0
