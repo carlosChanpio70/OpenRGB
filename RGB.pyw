@@ -1,60 +1,27 @@
-import random
-import psutil
-import comtypes
-import threading
 from openrgb import OpenRGBClient
 from openrgb.utils import RGBColor
 import time
-import numpy as np
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
+from effects.Base import *
 
+white_percentage = 0.2
 gradient_min_steps = 4
 gradient_max_steps = 6
 updates_per_second = 30
-layers = [
+layers_ids = [
     "layer_1_base",  # * ID 0
     "layer_1_target",  # * ID 1
-    "layer_1",  # * ID 2
-    "layer_2",  # * ID 3
-    "layer_1_timing",  # * ID 4
-    "layer_1_counter"  # * ID 5
+    "layer_1_timing",  # * ID 2
+    "layer_1_current",  # * ID 3
+    "layer_1_final",  # * ID 4
+    "layer_2_volume",  # * ID 5
 ]
 devices_layers: dict = {}
-names = ["Corsair Vengeance Pro RGB", "MSI MPG B550 GAMING PLUS (MS-7C56)", "JRGB1"]
+names = ["Corsair Vengeance Pro RGB", "MSI MPG B550 GAMING PLUS (MS-7C56)"]
 
-def timer(func):
-
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        if end_time - start_time != 0:
-            print(f"{func.__name__} took {end_time -
-                                          start_time} seconds to execute.")
-        return result
-    return wrapper
-
-
-def thread_wrapper(func):
-    def wrapper(*args, **kwargs):
-        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
-        thread.daemon = True
-        thread.start()
-        return thread
-    return wrapper
-
-
-@thread_wrapper
-def log_cpu_usage_thread():
-    """Thread function to log CPU usage."""
-    while True:
-        process = psutil.Process()
-        cpu_percent = process.cpu_percent(interval=1)
-        print(f"CPU Usage: {cpu_percent}%")
-        time.sleep(1)  # Sleep for 1 second between logs
-
-# Starts the OpenRGB Client and returns the client and devices
+purple = RGBColor(100, 0, 255)
+white = RGBColor(255, 255, 255)
+color1 = purple
+color2 = white
 
 
 def startup() -> OpenRGBClient:
@@ -65,248 +32,94 @@ def startup() -> OpenRGBClient:
 
     client = OpenRGBClient(name="RGB")
     client.clear()
-        
+
     global devices
-    devices=[]
+    devices = []
     devices.append(client.get_devices_by_name(names[0])[0])
     devices.append(client.get_devices_by_name(names[0])[1])
     devices.append(client.get_devices_by_name(names[1])[0])
-    
-    for i in devices:
-        i.set_mode(i.modes[0])
-        devices_layers[i.id] = {}
-        for j in layers:
-            devices_layers[i.id][j] = []
-            for led in i.leds:
-                devices_layers[i.id][j].append(None)
+
+    for device in devices:
+        device.set_mode(device.modes[0])
+        devices_layers[device.id] = {}
+        for j in layers_ids:
+            devices_layers[device.id][j] = []
+            for led in device.leds:
+                devices_layers[device.id][j].append(None)
     return client
 
 
-@thread_wrapper
-def update_volume() -> None:
-    """"
-    Updates the volume global variable
-    """
+def update_effects(device) -> None:
+    layer_1_base = devices_layers[device.id][layers_ids[0]]
+    layer_1_target = devices_layers[device.id][layers_ids[1]]
+    layer_1_timing = devices_layers[device.id][layers_ids[2]]
+    layer_1_current = devices_layers[device.id][layers_ids[3]]
+    layer_1_final = devices_layers[device.id][layers_ids[4]]
 
-    comtypes.CoInitialize()
-    timer_1 = 0
+    if layer_1_base[0] is None:
+        layer_1_base = set_base_color(device, color1)
 
-    def set_volume() -> None:
-        speaker = interface.QueryInterface(IAudioMeterInformation)
-        global volume
-        volume = speaker.GetPeakValue()
-        if volume > 1 or volume < 0:
-            volume = 0
+    if layer_1_target[0] is None:
+        layer_1_target = set_random_colors(device, color1, color2, white_percentage)
 
-    devices = AudioUtilities.GetSpeakers()
-    interface = devices.Activate(
-        IAudioMeterInformation._iid_, CLSCTX_ALL, None)
+    x = set_timings(device, [layer_1_base, layer_1_target, layer_1_timing, layer_1_current,
+                    layer_1_final], gradient_min_steps, gradient_max_steps, color1, color2, white_percentage)
+    layer_1_base, layer_1_target, layer_1_timing, layer_1_current, layer_1_final = x
 
-    while True:
-        set_volume()
-        time.sleep(1/240)
+    layer_1_final = gradient(device, layer_1_base, layer_1_target,
+                             layer_1_timing, layer_1_current)
 
-def set_layer_1(input) -> None:
-    """
-    Defines the colors for layer 1
-    :param input: The device to set the colors for
-    :param percentage_counter: The current percentage of the animation for switching colors
-    """
-
-    def get_color(zone) -> RGBColor:
-        """
-        Creates a list of random colors based on the zone size
-
-        :param zone: The zone
-        """
+    if device.name == names[1]:
+        layer_1_final[0] = color1
         
-        white = RGBColor(255, 255, 255)
-            
-        if input.name == names[0]:
-            purple = RGBColor(50, 0, 255)
-        else:
-            purple = RGBColor(100, 0, 255)
+    if device.name == names[0]:
+        devices_layers[device.id][layers_ids[5]] = set_volume(device, color1, color2)
 
-        if zone.name == names[2]:
-            return purple
-        else:
-            if random.random() < 0.2:
-                return white
-            else:
-                return purple
+    devices_layers[device.id][layers_ids[0]] = layer_1_base
+    devices_layers[device.id][layers_ids[1]] = layer_1_target
+    devices_layers[device.id][layers_ids[2]] = layer_1_timing
+    devices_layers[device.id][layers_ids[3]] = layer_1_current
+    devices_layers[device.id][layers_ids[4]] = layer_1_final
 
-    def set_color(layer: str) -> None:
-        """
-        Adds random colors to the layer
-        :param layer: The layer to set the colors for
-        """
 
-        colors = []
-        for i in input.zones:
-            for _ in i.leds:
-                colors.append(get_color(i))
-        devices_layers[input.id][layer] = colors
-
-    def gradient_random_timing(size: int):
-        """
-        Creates a list of random integers based on the zone size
-
-        :param size: The size of the zone
-        :param zone: The zone
-        """
-
-        if size == 1:
-            return random.randint(gradient_min_steps, gradient_max_steps)
-        timings = []
-        for _ in range(size):
-            timings.append(random.randint(
-                gradient_min_steps, gradient_max_steps))
-        return timings
-
-    def set_layer_1_gradient() -> None:
-        """
-        Defines the colors for layer 1 based on the value of volume
-        """
-
-        gradient_timing = np.array(devices_layers[input.id][layers[4]])
-        gradient_counter = np.array(devices_layers[input.id][layers[5]])
-        percent = gradient_counter / gradient_timing
-
-        # Extract red, green, blue values from old_colors and new_colors
-        base_colors_rgb = np.array([(color.red, color.green, color.blue)
-                                   for color in devices_layers[input.id][layers[0]]])
-
-        target_colors_rgb = np.array(
-            [(color.red, color.green, color.blue) for color in devices_layers[input.id][layers[1]]])
-
-        # Calculate gradients for red, green, and blue channels
-        r = base_colors_rgb[:, 0] * \
-            (1 - percent) + target_colors_rgb[:, 0] * percent
-        g = base_colors_rgb[:, 1] * \
-            (1 - percent) + target_colors_rgb[:, 1] * percent
-        b = base_colors_rgb[:, 2] * \
-            (1 - percent) + target_colors_rgb[:, 2] * percent
-
-        # Combine the calculated red, green, blue values back into RGBColor objects
-        output = [RGBColor(int(r[i]), int(g[i]), int(b[i]))
-                  for i in range(len(r))]
-
-        devices_layers[input.id][layers[2]] = output
-
-    if devices_layers[input.id][layers[0]][0] == None:
-        set_color(layers[0])
-        set_color(layers[1])
-
-    if devices_layers[input.id][layers[4]][0] == None:
-        devices_layers[input.id][layers[4]
-                                 ] = gradient_random_timing(len(input.leds))
-        devices_layers[input.id][layers[5]] = [0] * len(input.leds)
-
-    for i in range(len(input.leds)):
-        devices_layers[input.id][layers[5]][i] += 1
-        if devices_layers[input.id][layers[4]][i] <= devices_layers[input.id][layers[5]][i]:
-            devices_layers[input.id][layers[4]][i] = gradient_random_timing(1)
-            devices_layers[input.id][layers[5]][i] = 0
-            # Switch base and target colors and get new target colors
-            devices_layers[input.id][layers[0]][i] = devices_layers[input.id][layers[1]][i]
-            for j in devices:
-                for k in j.zones:
-                    for l in k.leds:
-                        if l.id == input.leds[i].id:
-                            zone = k
-            devices_layers[input.id][layers[1]][i] = get_color(zone)
-
-    set_layer_1_gradient()
-
-def set_layer_2(input) -> None:
-    """
-    Defines the colors for layer 2 based on the value of volume
-    :param input: The device to set the colors for
-    """
-
-    def gradient(percent) -> RGBColor:
-        color1 = [50, 0, 255]
-        color2 = [255, 255, 255]
-        return RGBColor(int(color1[0] * (1 - percent) + color2[0] * percent), int(color1[1] * (1 - percent) + color2[1] * percent), int(color1[2] * (1 - percent) + color2[2] * percent))
-
-    if input.name == names[0]:
-        colors = []
-        for i in range(len(input.leds)):
-            colors.append(None)
-
-        for i in input.zones:
-            led_id = i.leds[0].id+1
-            size = len(i.leds)-2
-            for i in range(size):
-                displayed_volume = size*volume
-                if i < int(displayed_volume):
-                    colors[led_id + i] = RGBColor(255, 255, 255)
-                else:
-                    colors[led_id + i] = gradient(displayed_volume-i)
-                    break
-
-        devices_layers[input.id][layers[3]] = colors
-
-def apply_layers(input) -> None:
+def apply_layers(device) -> None:
     """
     Mixes the colors of each layer and applies them
     :param input: The device to set the colors for
     """
 
-    if devices_layers[input.id][layers[2]][0] is not None:
-        colors = devices_layers[input.id][layers[2]]
+    if devices_layers[device.id][layers_ids[4]][0] is not None:
+        colors = devices_layers[device.id][layers_ids[4]]
 
-        if input.name == names[0]:
-            for i in range(len(input.colors)):
-                if devices_layers[input.id][layers[3]][i] is not None:
-                    colors[i] = devices_layers[input.id][layers[3]][i]
+        if device.name == names[0]:
+            for i in range(len(device.colors)):
+                if devices_layers[device.id][layers_ids[5]][i] is not None:
+                    colors[i] = devices_layers[device.id][layers_ids[5]][i]
 
-        input.set_colors(colors, True)
+        device.set_colors(colors, True)
 
 
 def main():
-    try:
-
-        client = startup()
-    except:
-        time.sleep(5)
-        main()
+    client = startup()
 
     start = time.time()
     delay = 0
     desired_delay = 1/(updates_per_second)
 
-    global volume, volume1
+    global volume
     volume = 0
-    volume1 = 0
 
-    update_volume()
+    while True:
+        if delay > desired_delay:
+            start = time.time()
+            for device in devices:
+                update_effects(device)
+                apply_layers(device)
 
-    # log_cpu_usage_thread()
-
-
-    try:
-        while True:
-            if delay > desired_delay:
-                start = time.time()
-
-                for i in devices:
-                    set_layer_1(i)
-                    set_layer_2(i)
-
-            for i in devices:
-                if volume1 != volume and delay < desired_delay:
-                    set_layer_2(i)
-                apply_layers(i)
-
-            volume1 = volume
-            time.sleep(1/480)
-            delay = time.time() - start
-
-    except:
-        client.disconnect()
-        main()
+        time.sleep(1/240)
+        delay = time.time() - start
 
 
 if __name__ == "__main__":
+    update_volume()
     main()

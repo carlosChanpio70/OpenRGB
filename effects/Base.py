@@ -1,8 +1,8 @@
 import random
+from turtle import color
 import psutil
 import comtypes
 import threading
-from openrgb import OpenRGBClient
 from openrgb.utils import RGBColor
 import time
 import numpy as np
@@ -21,7 +21,6 @@ def timer(func):
         return result
     return wrapper
 
-
 def thread_wrapper(func):
     def wrapper(*args, **kwargs):
         thread = threading.Thread(target=func, args=args, kwargs=kwargs)
@@ -29,7 +28,6 @@ def thread_wrapper(func):
         thread.start()
         return thread
     return wrapper
-
 
 @thread_wrapper
 def log_cpu_usage_thread():
@@ -64,7 +62,7 @@ def update_volume() -> None:
         set_volume()
         time.sleep(1/240)
 
-def set_base_color(input, color) -> list:
+def set_base_color(device, color) -> list:
     """
     Sets the base color for a layer
     :param input: The device to set the colors for
@@ -72,78 +70,118 @@ def set_base_color(input, color) -> list:
     """
 
     colors = []
-    for i in input.zones:
+    for i in device.zones:
         for _ in i.leds:
             colors.append(color)
     return colors
 
-def set_random_color(input, color, layer, probability) -> list:
+def set_random_color(color1, color2, probability) -> list:
     """
-    Sets random color for a layer
+    Sets random color for a led
     :param input: The device to set the colors for
-    :param color: The color to set
-    :param layer: The layer to set the colors for
+    :param color1: The base color to set
+    :param color2: The second color to set
     :param probability: The probability of setting a color
     """
     
-    colors = []
+    color = []
     
-    for i in input.zones:
-        for _ in i.leds:
-            if random.random() < probability:
-                colors.append(color)
-            else:
-                colors.append(0)
+    if random.random() < probability:
+        color = color2
+    else:
+        color = color1
 
-    for i in range(len(colors)):
-        if colors[i] == color:
-            layer[i] = color
+    return color
+
+def set_random_colors(device, color1, color2, probability) -> list:
+    """
+    Sets random colors for a layer
+    :param input: The device to set the colors for
+    :param color1: The base color to set
+    :param color2: The second color to set
+    :param probability: The probability of setting a color
+    """
+    
+    layer = []
+    
+    for i in device.zones:
+        for _ in i.leds:
+            layer.append(set_random_color(color1, color2, probability))
 
     return layer
 
-def gradient(input, color, color_layer, current_timing, timing_layer) -> list:
-    
-    gradient_layer = []
+def set_timings(device, layers, timing_low, timing_high,color1, color2, probability) -> list:
+    """
+    Sets timings for a layer
+    :param input: The device to set the timings for
+    :param layers: [layer_1_base, layer_1_target, layer_1_timing, layer_1_current]
+    :param timing_low: The low timing of the layer
+    :param timing_high: The high timing of the layer
+    """
 
+    if layers[3][0] is None:
+        for i in range(len(layers[3])):
+            layers[3][i] = random.randint(timing_low, timing_high)
+            layers[2][i] = layers[3][i]
+    else:
+        for zone in device.zones:
+            for led in zone.leds:
+                layers[2][led.id] -= 1
+                if layers[2][led.id] == 0:
+                    layers[3][led.id] = random.randint(timing_low, timing_high)
+                    layers[2][led.id] = layers[3][led.id]
+                    layers[0][led.id] = layers[1][led.id]
+                    layers[1][led.id] = set_random_color(color1, color2, probability)
+    return layers
+
+def gradient(input, layer_1_base, layer_1_target, layer_1_timing, layer_1_current) -> list:
+    layer_1_final = []
+    
+    def get_gradient_percentage(current_timing, timing):
+        if timing == 0:
+            gradient_percentage = 0
+        else:
+            gradient_percentage = (timing / current_timing) * 100
+        return gradient_percentage
+    
     for i in input.zones:
         for j in i.leds:
-            if current_timing[j.id] == timing_layer[j.id]:
-                gradient_layer.append(color)
+            if layer_1_current[j.id] == layer_1_timing[j.id]:
+                layer_1_final.append(layer_1_base[j.id])
             else:
-                gradient_percentage = current_timing[j.id] / timing_layer[j.id]
-                gradient_layer.append(int(color_layer[j.id] * (1 - gradient_percentage) + color * gradient_percentage))
-    return gradient_layer
-    
-def check_timing(input, current_timing, timing_layer, timing_low, timing_high):
-    for i in input.zones:
-        for j in i.leds:
-            if current_timing[j.id] == timing_layer[j.id]:
-                current_timing[j.id] = 0
-                timing_layer[j.id] = random.randint(timing_low, timing_high)
+                gradient_percentage = get_gradient_percentage(layer_1_current[j.id], layer_1_timing[j.id])
                 
-    return current_timing, timing_layer
+                r1, g1, b1 = layer_1_base[j.id].red, layer_1_base[j.id].green, layer_1_base[j.id].blue
+                r2, g2, b2 = layer_1_target[j.id].red, layer_1_target[j.id].green, layer_1_target[j.id].blue
 
-def set_volume(input, name) -> list:
+                r = int((r2 * (100 - gradient_percentage) + r1 * gradient_percentage) / 100)
+                g = int((g2 * (100 - gradient_percentage) + g1 * gradient_percentage) / 100)
+                b = int((b2 * (100 - gradient_percentage) + b1 * gradient_percentage) / 100)
+                
+                layer_1_final.append(RGBColor(r, g, b))
+    
+    return layer_1_final
+    
+def set_volume(device, color1, color2) -> list:
     
     def volume_gradient(percent) -> RGBColor:
-        color1 = [50, 0, 255]
-        color2 = [255, 255, 255]
-        return RGBColor(int(color1[0] * (1 - percent) + color2[0] * percent), int(color1[1] * (1 - percent) + color2[1] * percent), int(color1[2] * (1 - percent) + color2[2] * percent))
+        colora = [color1.red, color1.green, color1.blue]
+        colorb = [color2.red, color2.green, color2.blue]
+        return RGBColor(int(colora[0] * (1 - percent) + colorb[0] * percent), int(colora[1] * (1 - percent) + colorb[1] * percent), int(colora[2] * (1 - percent) + colorb[2] * percent))
 
-    if input.name == name:
-        colors = []
-        for i in range(len(input.leds)):
-            colors.append(None)
+    colors = []
+    for i in range(len(device.leds)):
+        colors.append(None)
 
-        for i in input.zones:
-            led_id = i.leds[0].id+1
-            size = len(i.leds)-2
-            for i in range(size):
-                displayed_volume = size*volume
-                if i < int(displayed_volume):
-                    colors[led_id + i] = RGBColor(255, 255, 255)
-                else:
-                    colors[led_id + i] = volume_gradient(displayed_volume-i)
-                    break
+    for i in device.zones:
+        led_id = i.leds[0].id+1
+        size = len(i.leds)-2
+        for i in range(size):
+            displayed_volume = size*volume
+            if i < int(displayed_volume):
+                colors[led_id + i] = RGBColor(255, 255, 255)
+            else:
+                colors[led_id + i] = volume_gradient(displayed_volume-i)
+                break
 
     return colors
