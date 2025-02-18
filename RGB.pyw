@@ -6,7 +6,7 @@ from effects.Base import *
 color_2_percentage = 0.2
 gradient_min_steps = 4
 gradient_max_steps = 8
-updates_per_second = 30
+updates_per_second = 60
 layers_ids = [
     "layer_1_base",  # * ID 0
     "layer_1_target",  # * ID 1
