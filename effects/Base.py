@@ -1,3 +1,4 @@
+from operator import ge
 import random
 import psutil
 import comtypes
@@ -7,6 +8,12 @@ import time
 import numpy
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
+
+def get_percentage(value1: float, value2: float) -> float:
+    if value1 == 0:
+        return 0
+    else:
+        return (value1 / value2) * 100
 
 def timer(func):
     """
@@ -126,52 +133,38 @@ def set_timings(device,layers:list,timing_low:int,timing_high:int,color1:RGBColo
     """
 
     if layers[3][0] is None:
-        random_timings = [random.randint(timing_low, timing_high) for _ in layers[3]]
-        layers[3][:] = random_timings
-        layers[2][:] = random_timings
+        layers[3][:] = [random.randint(timing_low, timing_high) for _ in layers[3]]
+        layers[2][:] = layers[3][:]
     else:
         for zone in device.zones:
             for led in zone.leds:
                 layers[2][led.id] -= 1
-                if layers[2][led.id] == 0:
-                    random_timing = random.randint(timing_low, timing_high)
-                    layers[3][led.id] = random_timing
-                    layers[2][led.id] = random_timing
+                if layers[2][led.id] < 0:
+                    layers[3][led.id] = random.randint(timing_low, timing_high)
+                    layers[2][led.id] = layers[3][led.id]
                     layers[0][led.id] = layers[1][led.id]
                     layers[1][led.id] = set_random_color(color1, color2, probability)
     return layers
 
-def gradient(device, layer_1_base: list, layer_1_target: list, layer_1_timing: list, layer_1_current: list) -> list:
+def gradient(device,layers: list) -> list:
     """
     Sets the gradient for a layer
     :param device: The device to set the gradient for
-    :param layer_1_base: The base color of the layer
-    :param layer_1_target: The target color of the layer
-    :param layer_1_timing: The timing of the layer
-    :param layer_1_current: The current timing of the layer
+    :param layers: [layer_1_base, layer_1_target, layer_1_timing, layer_1_current]
     :return: The gradient of the layer
     """
     
-    def get_gradient_percentage(current_timing: int, timing: int):
-        if timing == 0:
-            return 0
-        else:
-            return (timing / current_timing) * 100
-    
-    def calculations(r1: int, g1: int, b1: int, r2: int, g2: int, b2: int, gradient_percentage: float) -> RGBColor:
-        r, g, b = numpy.array([r2, g2, b2]) * (100 - gradient_percentage) + numpy.array([r1, g1, b1]) * gradient_percentage
-        return RGBColor((r / 100).astype(int), (g / 100).astype(int), (b / 100).astype(int))
+    def calculations(color1: RGBColor, color2: RGBColor, gradient_percentage: float) -> RGBColor:
+        r, g, b = numpy.array([color2.red, color2.green, color2.blue]) * (100 - gradient_percentage) + numpy.array([color1.red, color1.green, color1.blue]) * gradient_percentage
+        return RGBColor(int(r / 100), int(g / 100), int(b / 100))
     
     layer_1_final = []
     for i in device.zones:
         for j in i.leds:
-            if layer_1_current[j.id] == layer_1_timing[j.id]:
-                layer_1_final.append(layer_1_base[j.id])
+            if layers[3][j.id] == layers[2][j.id]:
+                layer_1_final.append(layers[0][j.id])
             else:                
-                r1, g1, b1 = layer_1_base[j.id].red, layer_1_base[j.id].green, layer_1_base[j.id].blue
-                r2, g2, b2 = layer_1_target[j.id].red, layer_1_target[j.id].green, layer_1_target[j.id].blue
-
-                layer_1_final.append(calculations(r1, g1, b1, r2, g2, b2, get_gradient_percentage(layer_1_current[j.id], layer_1_timing[j.id])))
+                layer_1_final.append(calculations(layers[0][j.id], layers[1][j.id], get_percentage(layers[2][j.id], layers[3][j.id])))
     
     return layer_1_final
     
