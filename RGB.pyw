@@ -50,7 +50,7 @@ def startup() -> OpenRGBClient:
                     for led in device.leds:
                         devices_layers[device.id][j].append(None)
             return client
-        except TimeoutError:
+        except:
             time.sleep(.1)
 
 
