@@ -18,10 +18,9 @@ layer_names = [
     "layer_2_volume",  # * ID 5
 ]
 
-purple = RGBColor(100, 0, 255)
+purple = RGBColor(75, 0, 255)
 white = RGBColor(255, 255, 255)
-color1 = purple
-color2 = white
+colors = [purple, white]
 
 
 def startup() -> OpenRGBClient:
@@ -55,6 +54,13 @@ def startup() -> OpenRGBClient:
 
 
 def update_effects(device) -> None:
+    if device.name == names[0]:
+        color1 = RGBColor(int(colors[0].red/1.25), colors[0].green, colors[0].blue)
+        color2 = colors[1]
+    else:
+        color1, color2 = colors
+    
+    
     if devices_layers[device.id][layer_names[0]][0] is None:
         devices_layers[device.id][layer_names[0]
                                   ] = set_base_color(device, color1)
@@ -63,10 +69,11 @@ def update_effects(device) -> None:
         devices_layers[device.id][layer_names[1]] = set_random_colors(
             device, color1, color2, color_2_percentage)
 
-    devices_layers[device.id][tuple(layer_names[:5])] = set_timings(device,
-                                                                    [devices_layers[device.id][ln]
-                                                                        for ln in layer_names[:5]],
-                                                                    gradient_min_steps, gradient_max_steps, color1, color2, color_2_percentage)
+    devices_layers[device.id][tuple(layer_names[:5])] = \
+        set_timings(device,
+            [devices_layers[device.id][ln]
+                for ln in layer_names[:5]],
+            gradient_min_steps, gradient_max_steps, color1, color2, color_2_percentage)
 
     devices_layers[device.id][layer_names[4]] = gradient(
         device, [devices_layers[device.id][ln] for ln in layer_names[:4]])
