@@ -18,7 +18,7 @@ layer_names = [
     "layer_2_volume",  # * ID 5
 ]
 
-purple = RGBColor(75, 0, 255)
+purple = RGBColor(125, 0, 255)
 white = RGBColor(255, 255, 255)
 colors = [purple, white]
 
@@ -55,7 +55,7 @@ def startup() -> OpenRGBClient:
 
 def update_effects(device) -> None:
     if device.name == names[0]:
-        color1 = RGBColor(int(colors[0].red/1.25), colors[0].green, colors[0].blue)
+        color1 = RGBColor(int(colors[0].red-50), colors[0].green, colors[0].blue)
         color2 = colors[1]
     else:
         color1, color2 = colors
