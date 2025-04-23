@@ -20,12 +20,13 @@ layer_names = [
     "layer_2_volume",  # * ID 5
 ]
 
+
 class Color():
     def __init__(self, red: int = 0, green: int = 0, blue: int = 0) -> None:
         self.red = red
         self.green = green
         self.blue = blue
-    
+
     def set_HSV(self, hue: float, saturation: float, brightness: float) -> None:
         """
         Sets the color using HSV values.
@@ -40,7 +41,7 @@ class Color():
         self.red = int(r * 255)
         self.green = int(g * 255)
         self.blue = int(b * 255)
-        
+
     def set_RGB(self, red: int, green: int, blue: int) -> None:
         self.red = red
         self.green = green
@@ -51,13 +52,15 @@ class Color():
         Adjusts the brightness of the color.
         :param brightness: Brightness value (0 to 100)
         """
-        brightness = max(0.0, min(100.0, brightness))  # Clamp brightness to [0, 100]
-        hue, saturation, _ = colorsys.rgb_to_hsv(self.red / 255, self.green / 255, self.blue / 255)
+        brightness = max(0.0, min(100.0, brightness)
+                         )  # Clamp brightness to [0, 100]
+        hue, saturation, _ = colorsys.rgb_to_hsv(
+            self.red / 255, self.green / 255, self.blue / 255)
         r, g, b = colorsys.hsv_to_rgb(hue, saturation, brightness / 100.0)
         self.red = int(r * 255)
         self.green = int(g * 255)
         self.blue = int(b * 255)
-        
+
     def get_color(self, hue_correction: float = 0.0, saturation_correction: float = 0.0, brightness_correction: float = 0.0) -> RGBColor:
         """
         Returns the color as a RGBColor object with applied corrections
@@ -66,18 +69,26 @@ class Color():
         :param brightness_correction: The amount to adjust the brightness (-100.0 to 100.0)
         :return: The color as a corrected RGBColor object
         """
-        hue, saturation, brightness = colorsys.rgb_to_hsv(self.red / 255, self.green / 255, self.blue / 255)
-        hue = ((hue * 360.0 + hue_correction) % 360.0) / 360.0  # Adjust hue and normalize to [0, 1]
-        saturation = max(0.0, min(1.0, (saturation * 255.0 + saturation_correction) / 255.0))  # Adjust and clamp saturation
-        brightness = max(0.0, min(1.0, (brightness * 100.0 + brightness_correction) / 100.0))  # Adjust and clamp brightness
+        hue, saturation, brightness = colorsys.rgb_to_hsv(
+            self.red / 255, self.green / 255, self.blue / 255)
+        hue = ((hue * 360.0 + hue_correction) % 360.0) / \
+            360.0  # Adjust hue and normalize to [0, 1]
+        # Adjust and clamp saturation
+        saturation = max(
+            0.0, min(1.0, (saturation * 255.0 + saturation_correction) / 255.0))
+        # Adjust and clamp brightness
+        brightness = max(
+            0.0, min(1.0, (brightness * 100.0 + brightness_correction) / 100.0))
         r, g, b = colorsys.hsv_to_rgb(hue, saturation, brightness)
         return RGBColor(int(r * 255), int(g * 255), int(b * 255))
+
 
 purple = Color()
 purple.set_HSV(255, 255, brightness_final)
 white = Color()
 white.set_HSV(0, 0, brightness_final)
 colors = [purple, white]
+
 
 def startup() -> OpenRGBClient:
     """
@@ -121,14 +132,16 @@ def brightness_adjust(color: RGBColor, brightness) -> RGBColor:
 
 
 def update_effects(device) -> None:
-    #if device.name == names[0] or any(zone.name == "JRAINBOW2" for zone in device.zones):
-    #    color1 = colors[0].get_color()
-    #    color2 = colors[1].get_color()
-    color1 = colors[0].get_color()
-    color2 = colors[1].get_color()
+    if any(zone.name == "JRAINBOW2" for zone in device.zones):
+        color1 = colors[0].get_color(hue_correction=5)
+        color2 = colors[1].get_color()
+    else:
+        color1 = colors[0].get_color()
+        color2 = colors[1].get_color()
 
     if devices_layers[device.id][layer_names[0]][0] is None:
-        devices_layers[device.id][layer_names[0]] = set_base_color(device, color1)
+        devices_layers[device.id][layer_names[0]
+                                  ] = set_base_color(device, color1)
 
     if devices_layers[device.id][layer_names[1]][0] is None:
         devices_layers[device.id][layer_names[1]] = set_random_colors(
