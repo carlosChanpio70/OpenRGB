@@ -1,4 +1,3 @@
-from operator import ge
 import random
 import psutil
 import comtypes
