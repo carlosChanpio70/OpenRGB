@@ -24,65 +24,31 @@ def startup() -> Devices:
     Starts the OpenRGB Client
     :return: The client
     """
-
     while True:
         try:
             client = OpenRGBClient(name="RGB")
             client.clear()
 
             devices = Devices()
-            devices.addDevice(client.get_devices_by_name(names[0])[0])
-            devices.addDevice(client.get_devices_by_name(names[0])[1])
-            devices.addDevice(client.get_devices_by_name(names[1])[0])
+            for device in client.devices:
+                if any(zone.name == "JRAINBOW2" for zone in device.zones):
+                    color1 = colors[0].get_color(hue_correction=5)
+                else:
+                    color1 = colors[0].get_color()
+                color2 = colors[1].get_color()
 
+                devices.addDevice(device, color1, color2, color_2_percentage)
             return devices
         except:
             time.sleep(.1)
 
-
-def brightness_adjust(color: RGBColor, brightness) -> RGBColor:
-    """
-    Adjusts the brightness of a color
-    :param color: The color to adjust
-    :return: The adjusted color
-    """
-    return RGBColor(int(color.red * brightness),
-                    int(color.green * brightness),
-                    int(color.blue * brightness))
-
-
 def update_effects(device, devices) -> None:
-    if any(zone.name == "JRAINBOW2" for zone in device.zones):
-        color1 = colors[0].get_color(hue_correction=5)
-        color2 = colors[1].get_color()
-    else:
-        color1 = colors[0].get_color()
-        color2 = colors[1].get_color()
-
-    if devices.getLayer(device, layer_names[0])[0] is None:
-        devices.setLayer(device, layer_names[0],
-                         set_base_color(device, color1))
-
-    if devices.getLayer(device, layer_names[1])[0] is None:
-        devices.setLayer(device, layer_names[1],
-                         set_random_colors(device, color1, color2, color_2_percentage))
-
-    devices.setLayer(device, tuple(layer_names[:5]),
-                     set_timings(device,
-                                 [devices.getLayer(device, ln)
-                                  for ln in layer_names[:5]],
-                                 gradient_min_steps, gradient_max_steps, color1, color2, color_2_percentage))
-
-    devices.setLayer(device, layer_names[4],
-                     gradient(device, [devices.getLayer(device, ln) for ln in layer_names[:4]]))
+    devices.setGradient(device, gradient_min_steps, gradient_max_steps)
 
     if device.name == names[1]:
-        layer = devices.getLayer(device, layer_names[4])
-        layer[0] = color1
-        devices.setLayer(device, layer_names[4], layer)
+        devices.setColorFinal(device, 0, 0)
     if device.name == names[0]:
-        devices.setLayer(device, layer_names[5],
-                         set_volume(device, color1, color2))
+        devices.setVolume(device)
 
 
 def apply_layers(device, devices) -> None:
@@ -100,7 +66,6 @@ def apply_layers(device, devices) -> None:
                     colors[i] = devices.getLayer(device, layer_names[5])[i]
 
         device.set_colors(colors, True)
-
 
 def main():
     devices=startup()
@@ -122,7 +87,6 @@ def main():
             delay = time.time() - start
         except ConnectionAbortedError:
             startup()
-
 
 if __name__ == "__main__":
     update_volume()
