@@ -32,10 +32,10 @@ def startup() -> Devices:
             devices = Devices()
             for device in client.devices:
                 if any(zone.name == "JRAINBOW2" for zone in device.zones):
-                    color1 = colors[0].get_color(hue_correction=5)
+                    color1 = colors[0].getColor(hue_correction=5)
                 else:
-                    color1 = colors[0].get_color()
-                color2 = colors[1].get_color()
+                    color1 = colors[0].getColor()
+                color2 = colors[1].getColor()
 
                 devices.addDevice(device, color1, color2, color_2_percentage)
             return devices

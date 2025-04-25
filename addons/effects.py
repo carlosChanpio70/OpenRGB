@@ -57,7 +57,7 @@ def update_volume() -> None:
     comtypes.CoInitialize()
     timer_1 = 0
 
-    def set_volume() -> None:
+    def update_volume_var() -> None:
         speaker = interface.QueryInterface(IAudioMeterInformation)
         global volume
         volume = speaker.GetPeakValue()
@@ -69,7 +69,7 @@ def update_volume() -> None:
         IAudioMeterInformation._iid_, CLSCTX_ALL, None)
 
     while True:
-        set_volume()
+        update_volume_var()
         time.sleep(1/240)
 
 def set_base_color(device, color:RGBColor) -> list:
@@ -117,55 +117,6 @@ def set_random_colors(device, color1: RGBColor, color2: RGBColor, probability: f
             layer.append(set_random_color(color1, color2, probability))
 
     return layer
-
-def set_timings(device,layers:list,timing_low:int,timing_high:int,color1:RGBColor,color2:RGBColor,probability:float) -> list:
-    """
-    Sets timings for a layer
-    :param input: The device to set the timings for
-    :param layers: [layer_1_base, layer_1_target, layer_1_timing, layer_1_current]
-    :param timing_low: The low timing of the layer
-    :param timing_high: The high timing of the layer
-    :param color1: The base color to set
-    :param color2: The second color to set
-    :param probability: The probability of setting a color
-    :return: The layers used as input
-    """
-
-    if layers[3][0] is None:
-        layers[3][:] = [random.randint(timing_low, timing_high) for _ in layers[3]]
-        layers[2][:] = layers[3][:]
-    else:
-        for zone in device.zones:
-            for led in zone.leds:
-                layers[2][led.id] -= 1
-                if layers[2][led.id] < 0:
-                    layers[3][led.id] = random.randint(timing_low, timing_high)
-                    layers[2][led.id] = layers[3][led.id]
-                    layers[0][led.id] = layers[1][led.id]
-                    layers[1][led.id] = set_random_color(color1, color2, probability)
-    return layers
-
-def gradient(device,layers: list) -> list:
-    """
-    Sets the gradient for a layer
-    :param device: The device to set the gradient for
-    :param layers: [layer_1_base, layer_1_target, layer_1_timing, layer_1_current]
-    :return: The gradient of the layer
-    """
-    
-    def calculations(color1: RGBColor, color2: RGBColor, gradient_percentage: float) -> RGBColor:
-        r, g, b = numpy.array([color2.red, color2.green, color2.blue]) * (100 - gradient_percentage) + numpy.array([color1.red, color1.green, color1.blue]) * gradient_percentage
-        return RGBColor(int(r / 100), int(g / 100), int(b / 100))
-    
-    layer_1_final = []
-    for i in device.zones:
-        for j in i.leds:
-            if layers[3][j.id] == layers[2][j.id]:
-                layer_1_final.append(layers[0][j.id])
-            else:                
-                layer_1_final.append(calculations(layers[0][j.id], layers[1][j.id], get_percentage(layers[2][j.id], layers[3][j.id])))
-    
-    return layer_1_final
     
 def set_volume(device, color1: RGBColor, color2: RGBColor) -> list:
     

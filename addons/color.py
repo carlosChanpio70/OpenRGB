@@ -41,7 +41,19 @@ class Color():
         self.green = int(g * 255)
         self.blue = int(b * 255)
 
-    def get_color(self, hue_correction: float = 0.0, saturation_correction: float = 0.0, brightness_correction: float = 0.0) -> RGBColor:
+    def getColor_mix(self, color, percentage: float) -> RGBColor:
+        """
+        Mixes the color with another RGBColor object based on the percentage.
+        :param color: The RGBColor object to mix with
+        :param percentage: The percentage to mix (0.0 to 1.0)
+        :return: The mixed color as a RGBColor object
+        """
+        r = int(self.red * percentage + color.red * (1 - percentage))
+        g = int(self.green * percentage + color.green * (1 - percentage))
+        b = int(self.blue * percentage + color.blue * (1 - percentage))
+        return RGBColor(r, g, b)
+
+    def getColor(self, hue_correction: float = 0.0, saturation_correction: float = 0.0, brightness_correction: float = 0.0) -> RGBColor:
         """
         Returns the color as a RGBColor object with applied corrections
         :param hue_correction: The amount to adjust the hue (-360.0 to 360.0)
