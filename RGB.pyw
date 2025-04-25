@@ -74,19 +74,19 @@ def main():
     delay = 0
     desired_delay = 1/(updates_per_second)
 
-    while True:
-        try:
-            if delay > desired_delay:
+    try:
+        while True:
+                if delay > desired_delay:
 
-                start = time.time()
-                for device in devices.getDevices():
-                    update_effects(device, devices)
-                    apply_layers(device, devices)
+                    start = time.time()
+                    for device in devices.getDevices():
+                        update_effects(device, devices)
+                        apply_layers(device, devices)
 
-            time.sleep(1/240)
-            delay = time.time() - start
-        except ConnectionAbortedError:
-            startup()
+                time.sleep(1/240)
+                delay = time.time() - start
+    except:
+        main()
 
 if __name__ == "__main__":
     update_volume()
