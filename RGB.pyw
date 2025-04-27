@@ -1,3 +1,4 @@
+from os import name
 from openrgb import OpenRGBClient
 from openrgb.utils import RGBColor
 import time
@@ -31,6 +32,7 @@ def startup() -> Devices:
 
             devices = Devices()
             for device in client.devices:
+                device.set_mode(0)
                 if any(zone.name == "JRAINBOW2" for zone in device.zones):
                     color1 = colors[0].getColor(hue_correction=5)
                 else:
