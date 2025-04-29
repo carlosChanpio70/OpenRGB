@@ -27,20 +27,23 @@ def startup() -> Devices:
     """
     while True:
         try:
-            client = OpenRGBClient(name="RGB")
-            client.clear()
-
+            client = OpenRGBClient()
+            
+            
             devices = Devices()
-            for device in client.devices:
-                device.set_mode(0)
-                if any(zone.name == "JRAINBOW2" for zone in device.zones):
-                    color1 = colors[0].getColor(hue_correction=5)
-                else:
-                    color1 = colors[0].getColor()
-                color2 = colors[1].getColor()
+            if client.devices == []:
+                raise Exception("No devices found")
+            else:
+                for device in client.devices:
+                    device.set_mode(0)
+                    if any(zone.name == "JRAINBOW2" for zone in device.zones):
+                        color1 = colors[0].getColor(hue_correction=5)
+                    else:
+                        color1 = colors[0].getColor()
+                    color2 = colors[1].getColor()
 
-                devices.addDevice(device, color1, color2, color_2_percentage)
-            return devices
+                    devices.addDevice(device, color1, color2, color_2_percentage)
+                return devices
         except:
             time.sleep(.1)
 
