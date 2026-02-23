@@ -1,12 +1,8 @@
 import random
 import psutil
-import comtypes
 import threading
 from openrgb.utils import RGBColor
 import time
-import numpy
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
 
 def get_percentage(value1: float, value2: float) -> float:
     if value1 == 0:
@@ -47,30 +43,6 @@ def log_cpu_usage():
         cpu_percent = process.cpu_percent(interval=1)
         print(f"CPU Usage: {cpu_percent}%")
         time.sleep(1)  # Sleep for 1 second between logs
-
-@thread_wrapper
-def update_volume() -> None:
-    """"
-    Updates the volume global variable based on the volume of the speakers
-    """
-
-    comtypes.CoInitialize()
-    timer_1 = 0
-
-    def update_volume_var() -> None:
-        speaker = interface.QueryInterface(IAudioMeterInformation)
-        global volume
-        volume = speaker.GetPeakValue()
-        if volume > 1 or volume < 0:
-            volume = 0
-
-    devices = AudioUtilities.GetSpeakers()
-    interface = devices.Activate(
-        IAudioMeterInformation._iid_, CLSCTX_ALL, None)
-
-    while True:
-        update_volume_var()
-        time.sleep(1/240)
 
 def set_base_color(device, color:RGBColor) -> list:
     """
@@ -118,7 +90,7 @@ def set_random_colors(device, color1: RGBColor, color2: RGBColor, probability: f
 
     return layer
     
-def set_volume(device, color1: RGBColor, color2: RGBColor) -> list:
+def set_volume(device, color1: RGBColor, color2: RGBColor, volume) -> list:
     
     def volume_gradient(percent) -> RGBColor:
         colora = [color1.red, color1.green, color1.blue]
@@ -133,7 +105,7 @@ def set_volume(device, color1: RGBColor, color2: RGBColor) -> list:
         led_id = i.leds[0].id+1
         size = len(i.leds)-2
         for i in range(size):
-            displayed_volume = size*volume
+            displayed_volume = size*volume.get_volume()
             if i < int(displayed_volume):
                 colors[led_id + i] = RGBColor(255, 255, 255)
             else:

@@ -1,4 +1,5 @@
-from addons.effects import *
+import random
+from addons.effects import set_random_color, set_random_colors, set_base_color, set_volume, RGBColor
 
 
 class Devices:
@@ -107,7 +108,7 @@ class Devices:
         self.set_timings(device, gradient_min_steps, gradient_max_steps)
         self.gradient(device)
         
-    def setVolume(self, device) -> None:
+    def setVolume(self, device, volume) -> None:
         color1, color2, _ = self.getColors(device)
         self.setLayer(device, self.layer_names[5],
-                     set_volume(device, color1, color2))
+                     set_volume(device, color1, color2, volume))

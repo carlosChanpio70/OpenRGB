@@ -1,10 +1,13 @@
-from os import name
 from openrgb import OpenRGBClient
-from openrgb.utils import RGBColor
 import time
-from addons.effects import *
 from addons.color import Color
 from addons.devices import Devices
+import addons.volume as volume
+from comtypes import CLSCTX_ALL
+
+class NoDevicesFoundError(RuntimeError):
+    """Raised when the OpenRGBClient reports no hardware devices."""
+    pass
 
 brightness_final = 50
 color_2_percentage = 0.2
@@ -20,7 +23,7 @@ white = Color()
 white.set_HSV(0, 0, brightness_final)
 colors = [purple, white]
 
-def startup() -> Devices:
+def startup():
     """
     Starts the OpenRGB Client
     :return: The client
@@ -31,8 +34,11 @@ def startup() -> Devices:
             
             
             devices = Devices()
-            if client.devices == []:
-                raise Exception("No devices found")
+            if not client.devices:                          # empty list is falsy
+                # no hardware detected yet; raise a specific exception so
+                # the outer loop can retry without swallowing unrelated
+                # errors
+                raise NoDevicesFoundError("no devices found")
             else:
                 for device in client.devices:
                     device.set_mode(0)
@@ -43,8 +49,9 @@ def startup() -> Devices:
                     color2 = colors[1].getColor()
 
                     devices.addDevice(device, color1, color2, color_2_percentage)
-                return devices
-        except:
+                return client,devices
+        except NoDevicesFoundError:
+            # expected transient condition; retry after a short pause
             time.sleep(.1)
 
 def update_effects(device, devices) -> None:
@@ -53,10 +60,10 @@ def update_effects(device, devices) -> None:
     if device.name == names[1]:
         devices.setColorFinal(device, 0, 0)
     if device.name == names[0]:
-        devices.setVolume(device)
+        devices.setVolume(device,volume)
 
 
-def apply_layers(device, devices) -> None:
+def Apply_color(device, devices) -> None:
     """
     Mixes the colors of each layer and applies them
     :param input: The device to set the colors for
@@ -70,10 +77,10 @@ def apply_layers(device, devices) -> None:
                 if devices.getLayer(device, layer_names[5])[i] is not None:
                     colors[i] = devices.getLayer(device, layer_names[5])[i]
 
-        device.set_colors(colors, True)
+        device.set_colors(colors, 1)
 
 def main():
-    devices=startup()
+    client,devices=startup()
 
     start = time.time()
     delay = 0
@@ -84,15 +91,17 @@ def main():
                 if delay > desired_delay:
 
                     start = time.time()
+                    final_output = []
                     for device in devices.getDevices():
                         update_effects(device, devices)
-                        apply_layers(device, devices)
+                        Apply_color(device, devices)
 
                 time.sleep(1/240)
                 delay = time.time() - start
-    except:
+    except Exception as e:
+        print(e)
         main()
 
 if __name__ == "__main__":
-    update_volume()
+    volume.start_volume_monitor()
     main()
