@@ -14,7 +14,6 @@ brightness_final = 50
 color_2_percentage = 0.2
 gradient_min_steps = 4
 gradient_max_steps = 6
-updates_per_second = 30
 names = ["Corsair Vengeance Pro RGB", "MSI MPG B550 GAMING PLUS (MS-7C56)"]
     
 layer_names = Devices().get_layer_names()
@@ -51,8 +50,7 @@ def startup():
 
                     devices.addDevice(device, color1, color2, color_2_percentage)
                 return client,devices
-        except NoDevicesFoundError:
-            # expected transient condition; retry after a short pause
+        except:
             time.sleep(.1)
 
 def update_effects(device, devices) -> None:
@@ -63,7 +61,6 @@ def update_effects(device, devices) -> None:
     if device.name == names[0]:
         devices.setVolume(device,volume)
 
-@timer
 def color_set(device, devices) -> None:
     """
     Mixes the colors of each layer and applies them
@@ -83,21 +80,24 @@ def color_set(device, devices) -> None:
 def main():
     client,devices=startup()
 
-    start = time.time()
-    delay = 0
-    desired_delay = 1/(updates_per_second)
+    fps = 24
+    frame_time = 1/fps
     
     try:
         while True:
-                if delay > desired_delay:
+            start = time.time()
 
-                    start = time.time()
-                    for device in devices.getDevices():
-                        update_effects(device, devices)
-                        color_set(device, devices)
-                    client.show()
-                time.sleep(1/240)
-                delay = time.time() - start
+            for device in devices.getDevices():
+                update_effects(device, devices)
+                color_set(device, devices)
+            client.show()
+
+            elapsed = time.time() - start
+            sleep_time = frame_time - elapsed
+            
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+                
     except Exception as e:
         print(e)
         main()
