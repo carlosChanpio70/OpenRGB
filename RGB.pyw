@@ -4,6 +4,7 @@ from addons.color import Color
 from addons.devices import Devices
 import addons.volume as volume
 from comtypes import CLSCTX_ALL
+from addons.effects import timer
 
 class NoDevicesFoundError(RuntimeError):
     """Raised when the OpenRGBClient reports no hardware devices."""
@@ -62,8 +63,8 @@ def update_effects(device, devices) -> None:
     if device.name == names[0]:
         devices.setVolume(device,volume)
 
-
-def Apply_color(device, devices) -> None:
+@timer
+def color_set(device, devices) -> None:
     """
     Mixes the colors of each layer and applies them
     :param input: The device to set the colors for
@@ -77,7 +78,7 @@ def Apply_color(device, devices) -> None:
                 if devices.getLayer(device, layer_names[5])[i] is not None:
                     colors[i] = devices.getLayer(device, layer_names[5])[i]
 
-        device.set_colors(colors, 1)
+        device.colors = colors
 
 def main():
     client,devices=startup()
@@ -85,17 +86,16 @@ def main():
     start = time.time()
     delay = 0
     desired_delay = 1/(updates_per_second)
-
+    
     try:
         while True:
                 if delay > desired_delay:
 
                     start = time.time()
-                    final_output = []
                     for device in devices.getDevices():
                         update_effects(device, devices)
-                        Apply_color(device, devices)
-
+                        color_set(device, devices)
+                    client.show()
                 time.sleep(1/240)
                 delay = time.time() - start
     except Exception as e:
