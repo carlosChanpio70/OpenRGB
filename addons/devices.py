@@ -16,6 +16,7 @@ class Devices:
             "layer_1_final",  # * ID 4
             "layer_2_volume",  # * ID 5
             ]
+        self.last_volume = 0.0
                  
     def set_layer(self, device, layer_name: str, layer: list) -> None:
         # apply all stored colour corrections to any layer being written.
@@ -111,6 +112,8 @@ class Devices:
     def gradient(self, device) -> None:
         """Sets the gradient for a layer"""
         def calculate_gradient(c1: RGBColor, c2: RGBColor, pct: float) -> RGBColor:
+            if c1 == c2:
+                return c1
             f = pct / 100
             return RGBColor(
                 int(c1.red * f + c2.red * (1 - f)),
@@ -158,6 +161,7 @@ class Devices:
         self.gradient(device)
         
     def set_volume(self, device, volume) -> None:
-        color1, color2, _ = self.get_colors(device)
-        self.set_layer(device, self.layer_names[5],
-                     set_volume(device, color1, color2, volume))
+        if volume != self.last_volume:
+            color1, color2, _ = self.get_colors(device)
+            self.set_layer(device, self.layer_names[5],set_volume(device, color1, color2, volume))
+            self.last_volume = volume
