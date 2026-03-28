@@ -1,10 +1,12 @@
+from ast import List
+from ctypes import Array
+from ctypes.wintypes import RGB
+
 from openrgb import OpenRGBClient
 import time
 from addons.color import Color
 from addons.devices import Devices
-import addons.volume as volume
-from comtypes import CLSCTX_ALL
-from addons.effects import timer
+from addons.volume import VolumeMonitor 
 
 class NoDevicesFoundError(RuntimeError):
     """Raised when the OpenRGBClient reports no hardware devices."""
@@ -59,23 +61,8 @@ def update_effects(device, devices) -> None:
     if device.name == names[1]:
         devices.set_color_final(device, colors[0].get_color(hue_correction=-15.0), 0)
     if device.name == names[0]:
-        devices.set_volume(device,volume)
-
-def color_set(device, devices) -> None:
-    """
-    Mixes the colors of each layer and applies them
-    :param input: The device to set the colors for
-    """
-
-    if devices.get_layer(device, layer_names[4])[0] is not None:
-        colors = devices.get_layer(device, layer_names[4])
-
-        if device.name == names[0]:
-            for i in range(len(device.colors)):
-                if devices.get_layer(device, layer_names[5])[i] is not None:
-                    colors[i] = devices.get_layer(device, layer_names[5])[i]
-
-        device.colors = colors
+        devices.set_volume(device,volume.get_volume())
+    devices.apply_final_layer(device)
 
 def main():
     client,devices=startup()
@@ -89,7 +76,6 @@ def main():
 
             for device in devices.get_device():
                 update_effects(device, devices)
-                color_set(device, devices)
             client.show()
 
             elapsed = time.time() - start
@@ -103,5 +89,6 @@ def main():
         main()
 
 if __name__ == "__main__":
-    volume.start_volume_monitor()
+    volume = VolumeMonitor()
+    volume.start()
     main()

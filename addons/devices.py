@@ -1,4 +1,7 @@
+from ctypes.wintypes import RGB
 import random
+
+from numpy import outer
 from addons.effects import set_random_color, set_random_colors, set_base_color, set_volume, RGBColor
 
 
@@ -14,26 +17,12 @@ class Devices:
             "layer_1_timing",  # * ID 2
             "layer_1_current",  # * ID 3
             "layer_1_final",  # * ID 4
-            "layer_2_volume",  # * ID 5
+            "layer_1_volume",  # * ID 5
             ]
-        self.last_volume = 0.0
+        self.last_volume = {}  # Track per-device to fix multiple devices with same name
                  
     def set_layer(self, device, layer_name: str, layer: list) -> None:
-        # apply all stored colour corrections to any layer being written.
-        # this ensures that every time a layer is updated the adjustments for
-        # colour[0] are persisted, regardless of which layer is modified.
-        self._apply_corrections_to_layer(device, layer)
         self.devices_layers[device.id][layer_name] = layer
-        
-    def set_color_final(self, device, color: RGBColor, position: int) -> None:
-        """Sets the final color for a specific LED in the final layer
-        :param device: The device to set the color for
-        :param color_id: The ID of the color to set (0 or 1)
-        :param position: The ID of the LED to set the color for"""
-        
-        layer = self.get_layer(device, self.layer_names[4])
-        layer[position] = color
-        self.set_layer(device, self.layer_names[4], layer)
 
     def _apply_correction(self, color: RGBColor, hue: float, sat: float, bright: float) -> RGBColor:
         if color is None:
@@ -43,6 +32,32 @@ class Devices:
             int(max(0, min(255, color.green + sat))),
             int(max(0, min(255, color.blue + bright))),
         )
+
+    def _get_corrections_for_position(self, device, position: int) -> list:
+        """Get all corrections that apply to a specific LED position."""
+        records = self.color_corrections.get(device.id, [])
+        applicable = []
+        
+        for pos, zidx, zname, hue, sat, bright in records:
+            if pos == position:
+                applicable.append((hue, sat, bright))
+            elif pos is None:
+                try:
+                    zone = self._get_zone(device, zidx, zname)
+                    for led in zone.leds:
+                        if led.id == position:
+                            applicable.append((hue, sat, bright))
+                            break
+                except ValueError:
+                    pass
+        
+        return applicable
+
+    def _apply_all_corrections_to_color(self, device, color: RGBColor, position: int) -> RGBColor:
+        """Apply all corrections for a specific LED position."""
+        for hue, sat, bright in self._get_corrections_for_position(device, position):
+            color = self._apply_correction(color, hue, sat, bright)
+        return color
 
     def _get_zone(self, device, zone_index=None, zone_name=None):
         """Resolve zone by index or name. Raises ValueError if not found."""
@@ -56,19 +71,6 @@ class Devices:
             raise ValueError(f"invalid zone_name: {zone_name}")
         return zone
 
-    def _apply_corrections_to_layer(self, device, layer, records=None):
-        """Apply one or more correction records to *layer* in place."""
-        if records is None:
-            records = self.color_corrections.get(device.id, [])
-
-        for pos, zidx, zname, hue, sat, bright in records:
-            if pos is not None:
-                layer[pos] = self._apply_correction(layer[pos], hue, sat, bright)
-            else:
-                zone = self._get_zone(device, zidx, zname)
-                for led in zone.leds:
-                    layer[led.id] = self._apply_correction(layer[led.id], hue, sat, bright)
-
         
     def set_color_correction(self, device, position=None, zone_index=None, zone_name=None,
                         hue_correction=0.0, saturation_correction=0.0, brightness_correction=0.0):
@@ -78,10 +80,6 @@ class Devices:
         
         record = (position, zone_index, zone_name, hue_correction, saturation_correction, brightness_correction)
         self.color_corrections.setdefault(device.id, []).append(record)
-        
-        if device in self.device_list:
-            for ln in self.layer_names[:2]:
-                self.set_layer(device, ln, self.get_layer(device, ln))
                 
     def get_colors(self, device) -> dict:
         return self.colors[device.id]
@@ -160,8 +158,49 @@ class Devices:
         self.set_timings(device, gradient_min_steps, gradient_max_steps)
         self.gradient(device)
         
+        # Apply color corrections to the final gradient layer
+        final_layer = self.get_layer(device, self.layer_names[4])
+        corrected_layer = [
+            self._apply_all_corrections_to_color(device, color, i) if color is not None else None
+            for i, color in enumerate(final_layer)
+        ]
+        self.set_layer(device, self.layer_names[4], corrected_layer)
+        
+    def set_color_final(self, device, color: RGBColor, position: int) -> None:
+        """Sets the final color for a specific LED in the final layer with corrections applied
+        :param device: The device to set the color for
+        :param color: The color to set
+        :param position: The ID of the LED to set the color for"""
+        
+        corrected_color = self._apply_all_corrections_to_color(device, color, position)
+        layer = self.get_layer(device, self.layer_names[4])
+        layer[position] = corrected_color
+        self.set_layer(device, self.layer_names[4], layer)
+        
     def set_volume(self, device, volume) -> None:
-        if volume != self.last_volume:
+        """Sets the volume for a specific LED in the final layer
+        :param device: The device to set the color for
+        :param volume: The volume to set (0.0 to 1.0)"""
+        
+        last_vol = self.last_volume.get(device.id, -1)  # Use -1 as initial default
+        if volume != last_vol:
             color1, color2, _ = self.get_colors(device)
-            self.set_layer(device, self.layer_names[5],set_volume(device, color1, color2, volume))
-            self.last_volume = volume
+            volume_colors = set_volume(device, color1, color2, volume)
+            self.last_volume[device.id] = volume
+            output=[]
+            for i in range(len(device.leds)):
+                if volume_colors[i] is not None:
+                    output.append(volume_colors[i])
+                else:
+                    output.append(None)
+            self.set_layer(device, self.layer_names[5], output)
+                    
+    def apply_final_layer(self, device) -> None:
+        output = self.get_layer(device, self.layer_names[4])
+        if self.get_layer(device, self.layer_names[5]) is not None:
+            volume_layer = self.get_layer(device, self.layer_names[5])
+            for i in range(len(device.leds)):
+                if volume_layer[i] is not None:
+                    output[i] = volume_layer[i]
+            
+        device.colors = output

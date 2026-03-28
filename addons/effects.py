@@ -105,7 +105,7 @@ def set_volume(device, color1: RGBColor, color2: RGBColor, volume) -> list:
         led_id = i.leds[0].id+1
         size = len(i.leds)-2
         for i in range(size):
-            displayed_volume = size*volume.get_volume()
+            displayed_volume = size*volume
             if i < int(displayed_volume):
                 colors[led_id + i] = RGBColor(255, 255, 255)
             else:
