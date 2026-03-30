@@ -1,7 +1,3 @@
-from ast import List
-from ctypes import Array
-from ctypes.wintypes import RGB
-
 from openrgb import OpenRGBClient
 import time
 from addons.color import Color
