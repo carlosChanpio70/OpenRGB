@@ -1,0 +1,5 @@
+comtypes==1.4.16
+numpy==2.4.4
+openrgb-python==0.3.6
+psutil==7.2.2
+pycaw==20251023
