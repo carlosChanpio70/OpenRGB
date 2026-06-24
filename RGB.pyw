@@ -13,7 +13,6 @@ gradient_min_steps = 4
 gradient_max_steps = 6
 names = ["Corsair Vengeance Pro RGB", "MSI MPG B550 GAMING PLUS (MS-7C56)"]
     
-layer_names = Devices().get_layer_names()
 purple = Color()
 purple.set_hex("#5200b0")
 white = Color()
@@ -61,28 +60,27 @@ def update_effects(device, devices) -> None:
     devices.apply_final_layer(device)
 
 def main():
-    client,devices=startup()
+    client, devices = startup()
 
     fps = 24
-    frame_time = 1/fps
-    
-    try:
-        while True:
-            start = time.time()
+    frame_time = 1.0 / fps
+
+    while True:
+        try:
+            start = time.perf_counter()
 
             for device in devices.get_device():
                 update_effects(device, devices)
             client.show()
 
-            elapsed = time.time() - start
+            elapsed = time.perf_counter() - start
             sleep_time = frame_time - elapsed
             
             if sleep_time > 0:
                 time.sleep(sleep_time)
-                
-    except Exception as e:
-        print(e)
-        main()
+        except Exception as e:
+            print(e)
+            client, devices = startup()
 
 if __name__ == "__main__":
     volume = VolumeMonitor()

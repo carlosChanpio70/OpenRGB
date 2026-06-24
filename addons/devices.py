@@ -1,9 +1,5 @@
-from ctypes.wintypes import RGB
 import random
-
-from numpy import outer
 from addons.effects import set_random_color, set_random_colors, set_base_color, set_volume, RGBColor
-
 
 class Devices:
     def __init__(self,) -> None:
@@ -187,13 +183,7 @@ class Devices:
             color1, color2, _ = self.get_colors(device)
             volume_colors = set_volume(device, color1, color2, volume)
             self.last_volume[device.id] = volume
-            output=[]
-            for i in range(len(device.leds)):
-                if volume_colors[i] is not None:
-                    output.append(volume_colors[i])
-                else:
-                    output.append(None)
-            self.set_layer(device, self.layer_names[5], output)
+            self.set_layer(device, self.layer_names[5], volume_colors)
                     
     def apply_final_layer(self, device) -> None:
         output = self.get_layer(device, self.layer_names[4])

@@ -4,6 +4,7 @@ from openrgb.utils import RGBColor
 class Color():
     def __init__(self, red: int = 0, green: int = 0, blue: int = 0) -> None:
         """Initialize color from RGB values, stored internally as HSL."""
+        self._cached_rgb_color = None
         self.set_rgb(red, green, blue)
 
     def _rgb_to_hsl(self, red: int, green: int, blue: int) -> tuple:
@@ -28,6 +29,10 @@ class Color():
         # Return HSV with hue as-is and saturation/value in 0-100 scale
         return hue, s_hsv * 100.0, v * 100.0
 
+    def _refresh_cached_rgb(self) -> None:
+        h, s, v = self._hsl_to_hsv(self.hue, self.saturation, self.lightness)
+        self._cached_rgb_color = RGBColor.fromHSV(h, s, v)
+
     def set_hsl(self, hue: float, saturation: float, lightness: float) -> None:
         """
         Sets the color using HSL values.
@@ -38,10 +43,12 @@ class Color():
         self.hue = hue % 360.0
         self.saturation = max(0.0, min(100.0, saturation))
         self.lightness = max(0.0, min(100.0, lightness))
+        self._refresh_cached_rgb()
 
     def set_rgb(self, red: int, green: int, blue: int) -> None:
         """Set the color using RGB values, storing internally as HSL."""
         self.hue, self.saturation, self.lightness = self._rgb_to_hsl(red, green, blue)
+        self._refresh_cached_rgb()
 
     def set_hex(self, hex_color: str) -> None:
         """
@@ -62,6 +69,7 @@ class Color():
         :param brightness: Brightness value (0 to 100)
         """
         self.lightness = max(0.0, min(100.0, brightness))
+        self._refresh_cached_rgb()
 
     def get_color_mix(self, color, percentage: float) -> RGBColor:
         """
@@ -85,6 +93,9 @@ class Color():
         :param brightness_correction: The amount to adjust the brightness (-100.0 to 100.0)
         :return: The color as a corrected RGBColor object
         """
+        if (hue_correction, saturation_correction, brightness_correction) == (0.0, 0.0, 0.0):
+            return self._cached_rgb_color
+
         hue = (self.hue + hue_correction) % 360.0
         saturation = max(0.0, min(100.0, self.saturation + saturation_correction))
         lightness = max(0.0, min(100.0, self.lightness + brightness_correction))

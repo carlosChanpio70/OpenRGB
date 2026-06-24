@@ -1,48 +1,6 @@
 import random
-import psutil
-import threading
 from openrgb.utils import RGBColor
 import time
-
-def get_percentage(value1: float, value2: float) -> float:
-    if value1 == 0:
-        return 0
-    else:
-        return (value1 / value2) * 100
-
-def timer(func):
-    """
-    Decorator to measure the execution time of a function
-    """
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        if end_time - start_time != 0:
-            print(f"{func.__name__} took {end_time -
-                                          start_time} seconds to execute.")
-        return result
-    return wrapper
-
-def thread_wrapper(func):
-    """
-    Decorator to run a function in a separate thread
-    """
-    def wrapper(*args, **kwargs):
-        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
-        thread.daemon = True
-        thread.start()
-        return thread
-    return wrapper
-
-@thread_wrapper
-def log_cpu_usage():
-    """Function to log CPU usage."""
-    while True:
-        process = psutil.Process()
-        cpu_percent = process.cpu_percent(interval=1)
-        print(f"CPU Usage: {cpu_percent}%")
-        time.sleep(1)  # Sleep for 1 second between logs
 
 def set_base_color(device, color:RGBColor) -> list:
     """
