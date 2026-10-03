@@ -11,7 +11,7 @@ class NoDevicesFoundError(RuntimeError):
 color_2_percentage = 0.2
 gradient_min_steps = 4
 gradient_max_steps = 6
-names = ["Corsair Vengeance Pro RGB", "MSI MPG B550 GAMING PLUS (MS-7C56)"]
+names = ["Corsair Vengeance RGB Pro", "MSI MPG B550 GAMING PLUS (MS-7C56)"]
     
 purple = Color()
 purple.set_hex("#5200b0")
@@ -36,6 +36,7 @@ def startup():
                 raise NoDevicesFoundError("no devices found")
             else:
                 for device in client.devices:
+                    print(device.name)
                     device.set_mode(0)
                     color1 = colors[0].get_color()
                     color2 = colors[1].get_color()
