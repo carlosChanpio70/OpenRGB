@@ -1,10 +1,12 @@
 import colorsys
+from typing import Optional
 from openrgb.utils import RGBColor
 
 class Color():
-    def __init__(self, red: int = 0, green: int = 0, blue: int = 0) -> None:
+    def __init__(self, red: int = 0, green: int = 0, blue: int = 0, alpha: float = 1.0) -> None:
         """Initialize color from RGB values, stored internally as HSL."""
         self._cached_rgb_color = None
+        self.set_alpha(alpha)
         self.set_rgb(red, green, blue)
 
     def _rgb_to_hsl(self, red: int, green: int, blue: int) -> tuple:
@@ -32,36 +34,49 @@ class Color():
     def _refresh_cached_rgb(self) -> None:
         h, s, v = self._hsl_to_hsv(self.hue, self.saturation, self.lightness)
         self._cached_rgb_color = RGBColor.fromHSV(h, s, v)
+        setattr(self._cached_rgb_color, "alpha", self.alpha)
 
-    def set_hsl(self, hue: float, saturation: float, lightness: float) -> None:
+    def set_alpha(self, alpha: float) -> None:
+        """Set opacity from 0.0 (transparent) to 1.0 (opaque)."""
+        self.alpha = max(0.0, min(1.0, float(alpha)))
+        if hasattr(self, "_cached_rgb_color") and self._cached_rgb_color is not None:
+            setattr(self._cached_rgb_color, "alpha", self.alpha)
+
+    def set_hsl(self, hue: float, saturation: float, lightness: float, alpha: Optional[float] = None) -> None:
         """
         Sets the color using HSL values.
         :param hue: Hue value (0 to 360)
         :param saturation: Saturation value (0 to 100)
         :param lightness: Lightness value (0 to 100)
+        :param alpha: Optional opacity value (0.0 to 1.0)
         """
+        if alpha is not None:
+            self.set_alpha(alpha)
         self.hue = hue % 360.0
         self.saturation = max(0.0, min(100.0, saturation))
         self.lightness = max(0.0, min(100.0, lightness))
         self._refresh_cached_rgb()
 
-    def set_rgb(self, red: int, green: int, blue: int) -> None:
+    def set_rgb(self, red: int, green: int, blue: int, alpha: Optional[float] = None) -> None:
         """Set the color using RGB values, storing internally as HSL."""
+        if alpha is not None:
+            self.set_alpha(alpha)
         self.hue, self.saturation, self.lightness = self._rgb_to_hsl(red, green, blue)
         self._refresh_cached_rgb()
 
     def set_hex(self, hex_color: str) -> None:
         """
         Sets the color using a hex color string.
-        :param hex_color: Hex color value (e.g., "#FF5733" or "FF5733")
+        :param hex_color: RGB or RGBA hex value (e.g., "#FF5733" or "#FF573380")
         """
         hex_color = hex_color.lstrip('#')
-        if len(hex_color) != 6:
-            raise ValueError("Hex color must be 6 characters long")
+        if len(hex_color) not in (6, 8):
+            raise ValueError("Hex color must be 6 or 8 characters long")
         red = int(hex_color[0:2], 16)
         green = int(hex_color[2:4], 16)
         blue = int(hex_color[4:6], 16)
-        self.set_rgb(red, green, blue)
+        alpha = int(hex_color[6:8], 16) / 255.0 if len(hex_color) == 8 else 1.0
+        self.set_rgb(red, green, blue, alpha)
 
     def brightness_set(self, brightness: float) -> None:
         """
@@ -83,7 +98,11 @@ class Color():
         r = int(current_color.red * percentage + color.red * (1 - percentage))
         g = int(current_color.green * percentage + color.green * (1 - percentage))
         b = int(current_color.blue * percentage + color.blue * (1 - percentage))
-        return RGBColor(r, g, b)
+        mixed_color = RGBColor(r, g, b)
+        current_alpha = getattr(self._cached_rgb_color, "alpha", 1.0)
+        color_alpha = getattr(color, "alpha", 1.0)
+        setattr(mixed_color, "alpha", current_alpha * percentage + color_alpha * (1 - percentage))
+        return mixed_color
 
     def get_color(self, hue_correction: float = 0.0, saturation_correction: float = 0.0, brightness_correction: float = 0.0) -> RGBColor:
         """
@@ -100,7 +119,9 @@ class Color():
         saturation = max(0.0, min(100.0, self.saturation + saturation_correction))
         lightness = max(0.0, min(100.0, self.lightness + brightness_correction))
         h, s, v = self._hsl_to_hsv(hue, saturation, lightness)
-        return RGBColor.fromHSV(h, s, v)
+        color = RGBColor.fromHSV(h, s, v)
+        setattr(color, "alpha", self.alpha)
+        return color
 
     @property
     def red(self) -> int:
@@ -119,4 +140,3 @@ class Color():
         """Get the blue component of the color (0-255)."""
         _, _, b = self._hsl_to_rgb(self.hue, self.saturation, self.lightness)
         return b
-

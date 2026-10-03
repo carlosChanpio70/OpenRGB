@@ -19,6 +19,32 @@ class Devices:
                  
     def set_layer(self, device, layer_name: str, layer: list) -> None:
         self.devices_layers[device.id][layer_name] = layer
+        
+    def update_layer(self, device, layer_name: str, layer: list) -> None:
+        old_layer = self.devices_layers[device.id][layer_name]
+        for i in range(len(old_layer)):
+            overlay = layer[i]
+            if overlay is None:
+                continue
+
+            base = old_layer[i]
+            overlay_alpha = max(0.0, min(1.0, float(getattr(overlay, "alpha", 1.0))))
+            base_alpha = 0.0 if base is None else max(0.0, min(1.0, float(getattr(base, "alpha", 1.0))))
+            output_alpha = overlay_alpha + base_alpha * (1.0 - overlay_alpha)
+
+            if output_alpha == 0.0:
+                blended = RGBColor(0, 0, 0)
+            else:
+                base_red = 0 if base is None else base.red
+                base_green = 0 if base is None else base.green
+                base_blue = 0 if base is None else base.blue
+                blended = RGBColor(
+                    int((overlay.red * overlay_alpha + base_red * base_alpha * (1.0 - overlay_alpha)) / output_alpha),
+                    int((overlay.green * overlay_alpha + base_green * base_alpha * (1.0 - overlay_alpha)) / output_alpha),
+                    int((overlay.blue * overlay_alpha + base_blue * base_alpha * (1.0 - overlay_alpha)) / output_alpha),
+                )
+            setattr(blended, "alpha", output_alpha)
+            old_layer[i] = blended
 
     def _apply_correction(self, color: RGBColor, hue: float, sat: float, bright: float) -> RGBColor:
         if color is None:
@@ -184,13 +210,8 @@ class Devices:
             volume_colors = set_volume(device, color1, color2, volume)
             self.last_volume[device.id] = volume
             self.set_layer(device, self.layer_names[5], volume_colors)
+        self.update_layer(device, self.layer_names[4], self.get_layer(device, self.layer_names[5]))
                     
     def apply_final_layer(self, device) -> None:
         output = self.get_layer(device, self.layer_names[4])
-        if self.get_layer(device, self.layer_names[5]) is not None:
-            volume_layer = self.get_layer(device, self.layer_names[5])
-            for i in range(len(device.leds)):
-                if volume_layer[i] is not None:
-                    output[i] = volume_layer[i]
-            
         device.colors = output

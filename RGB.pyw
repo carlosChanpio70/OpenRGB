@@ -36,7 +36,6 @@ def startup():
                 raise NoDevicesFoundError("no devices found")
             else:
                 for device in client.devices:
-                    print(device.name)
                     device.set_mode(0)
                     color1 = colors[0].get_color()
                     color2 = colors[1].get_color()
@@ -56,7 +55,7 @@ def update_effects(device, devices) -> None:
 
     if device.name == names[1]:
         devices.set_color_final(device, colors[0].get_color(hue_correction=-15.0), 0)
-    if device.name == names[0]:
+    if names[0].casefold() in device.name.casefold():
         devices.set_volume(device,volume.get_volume())
     devices.apply_final_layer(device)
 
