@@ -1,5 +1,12 @@
 import random
-from addons.effects import set_random_color, set_random_colors, set_base_color, set_volume, RGBColor
+from addons.effects import (
+    RGBColor,
+    interpolate_alpha,
+    set_base_color,
+    set_random_color,
+    set_random_colors,
+    set_volume,
+)
 
 class Devices:
     def __init__(self,) -> None:
@@ -132,14 +139,14 @@ class Devices:
     def gradient(self, device) -> None:
         """Sets the gradient for a layer"""
         def calculate_gradient(c1: RGBColor, c2: RGBColor, pct: float) -> RGBColor:
-            if c1 == c2:
-                return c1
-            f = pct / 100
-            return RGBColor(
-                int(c1.red * f + c2.red * (1 - f)),
-                int(c1.green * f + c2.green * (1 - f)),
-                int(c1.blue * f + c2.blue * (1 - f))
+            progress = 1 - pct / 100
+            color = RGBColor(
+                int(c1.red * (1 - progress) + c2.red * progress),
+                int(c1.green * (1 - progress) + c2.green * progress),
+                int(c1.blue * (1 - progress) + c2.blue * progress)
             )
+            setattr(color, "alpha", interpolate_alpha(c1, c2, progress))
+            return color
 
         base, target, timing, current = [self.get_layer(device, ln) for ln in self.layer_names[:4]]
         

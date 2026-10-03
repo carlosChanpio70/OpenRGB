@@ -2,6 +2,11 @@ import random
 from typing import List, Optional
 from openrgb.utils import RGBColor
 
+def interpolate_alpha(color1: RGBColor, color2: RGBColor, progress: float) -> float:
+    alpha1 = getattr(color1, "alpha", 1.0)
+    alpha2 = getattr(color2, "alpha", 1.0)
+    return alpha1 * (1 - progress) + alpha2 * progress
+
 def set_base_color(device, color:RGBColor) -> list:
     """
     Sets the base color for a layer
@@ -55,12 +60,9 @@ def set_volume(device, color1: RGBColor, color2: RGBColor, volume) -> list:
 
     colors: List[Optional[RGBColor]] = [None] * len(device.leds)
 
-    def volume_gradient(percent) -> RGBColor:
-        colora = [color1.red, color1.green, color1.blue]
-        colorb = [color2.red, color2.green, color2.blue]
-        color = RGBColor(int(colora[0] * (1 - percent) + colorb[0] * percent), int(colora[1] * (1 - percent) + colorb[1] * percent), int(colora[2] * (1 - percent) + colorb[2] * percent))
-        color_alpha = getattr(color1, "alpha", 1.0) * (1 - percent) + getattr(color2, "alpha", 1.0) * percent
-        setattr(color, "alpha", color_alpha)
+    def volume_gradient(percent: float) -> RGBColor:
+        color = RGBColor(255, 255, 255)
+        setattr(color, "alpha", interpolate_alpha(color1, color2, percent))
         return color
 
     for zone in device.zones:
