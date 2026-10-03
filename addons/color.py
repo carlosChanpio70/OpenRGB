@@ -93,7 +93,7 @@ class Color():
         :param brightness_correction: The amount to adjust the brightness (-100.0 to 100.0)
         :return: The color as a corrected RGBColor object
         """
-        if (hue_correction, saturation_correction, brightness_correction) == (0.0, 0.0, 0.0):
+        if (hue_correction, saturation_correction, brightness_correction) == (0.0, 0.0, 0.0) and self._cached_rgb_color is not None:
             return self._cached_rgb_color
 
         hue = (self.hue + hue_correction) % 360.0

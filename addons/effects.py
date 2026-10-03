@@ -1,6 +1,5 @@
 import random
 from openrgb.utils import RGBColor
-import time
 
 def set_base_color(device, color:RGBColor) -> list:
     """
