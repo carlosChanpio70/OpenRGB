@@ -1,75 +1,65 @@
 import time
-import threading
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
 import comtypes
 
 
 class VolumeMonitor:
-    """Threaded audio peak meter monitor."""
+    """Audio peak meter sampled by the caller."""
 
-    def __init__(self, poll_interval: float = 1 / 60):
+    def __init__(self):
         self._volume = 0.0
-        self._lock = threading.Lock()
-        self._running = False
-        self._thread = None
-        self._poll_interval = poll_interval
+        self._meter = None
+        self._com_initialized = False
 
     def get_volume(self) -> float:
         """Return the last sampled peak volume in range [0.0, 1.0]."""
-        with self._lock:
-            return self._volume
+        return self._volume
 
     def start(self) -> None:
-        """Start the background audio monitor thread."""
-        if self._thread is not None and self._thread.is_alive():
+        """Initialize the audio meter on the thread that will sample it."""
+        if self._meter is not None:
             return
 
-        self._running = True
-        self._thread = threading.Thread(
-            target=self._update_volume_loop,
-            name="VolumeMonitor",
-            daemon=True,
-        )
-        self._thread.start()
-
-    def stop(self, timeout: float = 2.0) -> None:
-        """Stop the monitor and wait for the thread to shut down."""
-        self._running = False
-        if self._thread is not None:
-            self._thread.join(timeout=timeout)
-            self._thread = None
-
-    def _update_volume_loop(self) -> None:
         comtypes.CoInitialize()
+        self._com_initialized = True
         try:
             speakers = AudioUtilities.GetSpeakers()
             if not speakers:
                 print("Volume monitor: no speaker device found")
+                self.stop()
                 return
 
-            dev = getattr(speakers, '_dev', None)
+            dev = getattr(speakers, "_dev", None)
             if dev is None:
                 print("Volume monitor init: no underlying device")
+                self.stop()
                 return
 
             interface = dev.Activate(IAudioMeterInformation._iid_, CLSCTX_ALL, None)
-            meter = interface.QueryInterface(IAudioMeterInformation)
-
-            while self._running:
-                try:
-                    peak = float(meter.GetPeakValue())
-                    with self._lock:
-                        self._volume = max(0.0, min(1.0, peak))
-                except Exception:
-                    with self._lock:
-                        self._volume = 0.0
-                time.sleep(self._poll_interval)
-
+            self._meter = interface.QueryInterface(IAudioMeterInformation)
         except Exception as exc:
             print(f"Volume monitor initialization failed: {exc}")
-        finally:
+            self.stop()
+
+    def update_volume(self) -> None:
+        """Sample the peak volume once; call from the main loop."""
+        if self._meter is None:
+            return
+
+        try:
+            peak = float(self._meter.GetPeakValue())
+            self._volume = max(0.0, min(1.0, peak))
+        except Exception:
+            self._volume = 0.0
+
+    def stop(self) -> None:
+        """Release the meter and uninitialize COM on the calling thread."""
+        self._meter = None
+        if self._com_initialized:
             comtypes.CoUninitialize()
+            self._com_initialized = False
+
 
 if __name__ == "__main__":
     # Test the class directly
@@ -79,9 +69,10 @@ if __name__ == "__main__":
     try:
         print("Volume monitor class test started. Press Ctrl+C to stop.")
         while True:
+            monitor.update_volume()
             vol = monitor.get_volume()
             print(f"Peak volume: {vol:.4f}", end="\r")
-            time.sleep(0.08)
+            time.sleep(1 / 60)
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:

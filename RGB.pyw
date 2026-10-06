@@ -50,13 +50,13 @@ def startup():
             print(e)
             time.sleep(.1)
 
-def update_effects(device, devices) -> None:
+def update_effects(device, devices, volume_level) -> None:
     devices.set_gradient(device, gradient_min_steps, gradient_max_steps)
 
     if device.name == names[1]:
         devices.set_color_final(device, colors[0].get_color(hue_correction=-15.0), 0)
     if names[0].casefold() in device.name.casefold():
-        devices.set_volume(device,volume.get_volume())
+        devices.set_volume(device, volume_level)
     devices.apply_final_layer(device)
 
 def main():
@@ -68,9 +68,11 @@ def main():
     while True:
         try:
             start = time.perf_counter()
+            volume.update_volume()
+            volume_level = volume.get_volume()
 
             for device in devices.get_device():
-                update_effects(device, devices)
+                update_effects(device, devices, volume_level)
             client.show()
 
             elapsed = time.perf_counter() - start
